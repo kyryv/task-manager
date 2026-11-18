@@ -1,0 +1,32 @@
+rules_version = '2';
+
+// Who can do what in the Task Manager database.
+//
+// 1. Allowed people: the owner keeps a private list in the database, one document per email address,
+//    in the collection "allowed" (document id = the email in lowercase, e.g. allowed/friend@gmail.com).
+//    The list is only edited in the Firebase console; the app itself can never change it.
+// 2. A signed-in person can read only their own entry in that list (so the app can say "no access").
+// 3. Everything of a person lives under users/{their user id}/... (tasks, categories).
+//    Only that same person can read or write it, and only if they are on the allowed list.
+// 4. Everything else is closed.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    function onAllowedList() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/allowed/$(request.auth.token.email.lower()));
+    }
+
+    match /allowed/{email} {
+      allow read: if signedIn() && request.auth.token.email.lower() == email;
+      allow write: if false;
+    }
+
+    match /users/{uid}/{document=**} {
+      allow read, write: if onAllowedList() && request.auth.uid == uid;
+    }
+  }
+}

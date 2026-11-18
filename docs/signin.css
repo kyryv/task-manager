@@ -1,0 +1,12 @@
+/* Sign-in screen (hosted version only). Uses the app's own colours from style.css. */
+#gate{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:16px;background:linear-gradient(rgba(12,16,14,.55),rgba(12,16,14,.72)),url("bg.gif") center/cover no-repeat,var(--bg);image-rendering:pixelated}
+#gate[hidden]{display:none}
+.gatecard{image-rendering:auto;width:min(400px,100%);display:grid;gap:16px;justify-items:center;text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:30px 26px 24px;box-shadow:var(--shadow);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.gatebrand{display:flex;align-items:center;gap:12px}
+.gatebrand svg{border-radius:11px}
+.gatebrand h1{font-size:38px}
+.gatemsg{margin:0;font-size:15px;color:var(--ink)}
+.gatebtn{display:inline-flex;align-items:center;gap:10px;font:500 15px Inter,system-ui,sans-serif;background:#fff;color:#1f1e1d;border:0;border-radius:12px;padding:11px 18px;cursor:pointer}
+.gatebtn:hover{filter:brightness(.95)}
+.gatelink{background:none;border:0;color:var(--accent);font:inherit;font-size:14px;cursor:pointer;text-decoration:underline}
+.gatenote{margin:0;font-size:12.5px;color:var(--muted)}

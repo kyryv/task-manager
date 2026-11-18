@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tasks</title>
+<link rel="icon" href="icon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1a211f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tasks">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="signin.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="var(--accent)"/><path d="M9 16.5l4.8 4.8L23 11.5" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <h1>Tasks</h1>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Views">
+      <button class="tab" role="tab" id="tab-board" data-tab="board" data-zone="tab:board" title="Board (1)">Board</button>
+      <button class="tab" role="tab" id="tab-dates" data-tab="dates" data-zone="tab:dates" title="Dates and deadlines (2). Hold a dragged task here to open it.">Dates<span class="n"></span></button>
+      <button class="tab" role="tab" id="tab-done" data-tab="done" data-zone="tab:done" title="Completed (3). Drop a task here to complete it.">Completed<span class="n"></span></button>
+    </nav>
+    <div class="filters" id="filters" role="toolbar" aria-label="Filter by category"></div>
+    <div class="tools">
+      <label class="search"><span data-icon="search"></span><input type="search" id="search" placeholder="Search" aria-label="Search tasks" autocomplete="off"><kbd>/</kbd></label>
+      <span id="saveState" class="save" role="status" aria-live="polite"></span>
+      <button type="button" class="iconbtn" id="settingsBtn" title="Categories, backups and shortcuts" aria-label="Settings"><span data-icon="gear"></span></button>
+    </div>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <form class="add" id="addForm" autocomplete="off">
+    <div class="addrow">
+      <span class="addplus" data-icon="plus"></span>
+      <input type="text" id="newTitle" maxlength="2000" placeholder="Add a task… e.g. “Essay due fri #uni”, then press Enter" aria-label="New task" aria-describedby="preview">
+      <button type="submit" class="btn primary" id="addBtn">Add</button>
+    </div>
+    <div class="addopts">
+      <select id="newCat" class="pill" aria-label="Category"></select>
+      <button type="button" class="pill" id="newDo" data-field="date"><span data-icon="cal"></span><span class="lbl">Do on</span></button>
+      <button type="button" class="pill" id="newDue" data-field="due"><span data-icon="flag"></span><span class="lbl">Deadline</span></button>
+      <select id="newRep" class="pill" aria-label="Repeat" title="Repeat this task"></select>
+      <div id="preview" class="preview"></div>
+    </div>
+  </form>
+
+
+  <main id="view"></main>
+</div>
+
+<div class="dock" id="dock" hidden aria-hidden="true">
+  <div class="dz" data-zone="dock:done"><span data-icon="check"></span>Complete</div>
+  <div class="dz" data-zone="dock:tomorrow"><span data-icon="sun"></span>Tomorrow</div>
+  <div class="dz" data-zone="dock:nextweek"><span data-icon="cal"></span>Next week</div>
+  <div class="dz del" data-zone="dock:delete"><span data-icon="trash"></span>Delete</div>
+</div>
+
+<div class="toast" id="toast" hidden><span id="toastMsg" role="status" aria-live="polite"></span><button type="button" id="toastUndo">Undo</button><button type="button" class="tx" id="toastX" aria-label="Dismiss"><span data-icon="x"></span></button></div>
+
+<div class="pop" id="datePop" hidden role="dialog" aria-label="Choose a date">
+  <div class="seg small" id="popMode">
+    <button type="button" data-m="date"><span data-icon="cal"></span>Do on</button>
+    <button type="button" data-m="due"><span data-icon="flag"></span>Deadline</button>
+  </div>
+  <b id="popHead"></b>
+  <div class="popq">
+    <button type="button" data-d="0">Today</button>
+    <button type="button" data-d="1">Tomorrow</button>
+    <button type="button" data-d="sat">This weekend</button>
+    <button type="button" data-d="mon">Next Monday</button>
+    <button type="button" data-d="7">In a week</button>
+    <button type="button" data-d="14">In 2 weeks</button>
+  </div>
+  <label class="popdate">Pick a date<input type="date" id="popDate"></label>
+  <button type="button" class="clear" data-d="none">Remove date</button>
+</div>
+
+<dialog id="editDlg" aria-labelledby="eHead">
+  <form method="dialog" id="editForm" autocomplete="off">
+    <div class="dlghead">
+      <h2 id="eHead">Task</h2>
+      <span class="autosaved" id="eSaved">Changes save automatically</span>
+    </div>
+    <textarea id="eTitle" class="etitle" rows="1" maxlength="300" aria-label="Title" placeholder="Task title"></textarea>
+    <textarea id="eDesc" rows="3" maxlength="5000" placeholder="Notes, links, details…" aria-label="Notes"></textarea>
+    <div class="erow"><span class="elbl">Category</span><div class="chips" id="eCats"></div></div>
+    <div class="erow"><span class="elbl"><span data-icon="cal"></span>Do on</span><div class="datefield" data-field="date"></div></div>
+    <div class="erow"><span class="elbl"><span data-icon="flag"></span>Deadline</span><div class="datefield" data-field="due"></div></div>
+    <div class="erow"><span class="elbl">Deadline type</span><div class="seg small" id="eKind" role="radiogroup" aria-label="Deadline type"></div></div>
+    <div class="kindbox" id="eKindBox"></div>
+    <div class="erow" id="ePartRow"><span class="elbl">Part of</span><select id="eParent" class="pill" aria-label="Part of a big deadline"></select></div>
+    <div class="erow"><span class="elbl"><span data-icon="repeat"></span>Repeat</span><div class="repfield" id="eRepeat"></div></div>
+    <div class="esubwrap">
+      <div class="elbl">Subtasks <span id="eSubCount"></span></div>
+      <ul class="esubs" id="eSubs" data-zone="dsubs" data-items="li"></ul>
+      <input type="text" id="eSubNew" placeholder="Add a subtask and press Enter (paste a list to add many)" maxlength="300" aria-label="New subtask">
+    </div>
+    <div class="dlgbar">
+      <button type="button" class="btn danger" id="eDelete"><span data-icon="trash"></span>Delete</button>
+      <span class="grow"></span>
+      <button type="button" class="btn ghost" id="eRevert" hidden>Undo changes</button>
+      <button type="button" class="btn primary" id="eDone">Done</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="setDlg" aria-labelledby="sHead">
+  <div class="setwrap">
+    <div class="dlghead"><h2 id="sHead">Settings</h2><button type="button" class="iconbtn" id="sClose" aria-label="Close"><span data-icon="x"></span></button></div>
+
+    <section>
+      <h3>Categories</h3>
+      <p class="hint">Rename, recolor or reorder. Deleting a category keeps its tasks; they just lose the label. Tip: type <code>#name</code> while adding a task to use or create a category.</p>
+      <ul class="catlist" id="catList"></ul>
+      <div class="catadd"><input type="color" id="catNewColor" aria-label="New category color"><input type="text" id="catNewName" maxlength="40" placeholder="New category name" aria-label="New category name"><button type="button" class="btn" id="catAdd">Add</button></div>
+    </section>
+
+    <section>
+      <h3>Your data</h3>
+      <p class="hint" id="dataInfo"></p>
+      <div class="btnrow">
+        <button type="button" class="btn" id="backupBtn" hidden>Back up now</button>
+        <button type="button" class="btn" id="folderBtn" hidden>Open data folder</button>
+        <button type="button" class="btn" id="exportBtn">Export (.json)</button>
+        <button type="button" class="btn" id="importBtn">Import backup…</button>
+        <button type="button" class="btn" id="signOutBtn">Sign out</button>
+      </div>
+      <p class="hint">Import accepts files from this app and from the old <b>Task Manager.html</b> (<i>Download backup</i>). You can also drop the file anywhere on the page. Tasks you already have are skipped.</p>
+    </section>
+
+    <section>
+      <h3>Typing shortcuts in the add box</h3>
+      <table class="keys">
+        <tr><td><code>today</code> <code>tomorrow</code> <code>fri</code> <code>next mon</code> <code>20.11</code> <code>nov 20</code> <code>in 3 days</code></td><td>Do on that day</td></tr>
+        <tr><td><code>due fri</code> <code>by 20.11</code> <code>deadline next week</code></td><td>Set a deadline</td></tr>
+        <tr><td><code>daily</code> <code>every weekday</code> <code>every mon and thu</code> <code>every 2 weeks</code> <code>monthly</code></td><td>Repeat (completing moves it to the next date)</td></tr>
+        <tr><td><code>#work</code></td><td>Category (new name creates one)</td></tr>
+        <tr><td>Paste several lines</td><td>Adds one task per line</td></tr>
+      </table>
+      <h3>Keyboard</h3>
+      <table class="keys">
+        <tr><td><kbd>N</kbd></td><td>New task</td></tr>
+        <tr><td><kbd>/</kbd></td><td>Search</td></tr>
+        <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>Board · Dates · Completed</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Undo the last complete, delete or move</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Close, cancel a drag, clear search</td></tr>
+      </table>
+    </section>
+  </div>
+</dialog>
+
+<div class="filedrop" id="fileDrop" hidden><div>Drop the backup file to import your tasks</div></div>
+<input type="file" id="importFile" accept=".json,.txt,application/json,text/plain" hidden>
+
+<script type="module" src="store.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

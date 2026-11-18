@@ -1,0 +1,24 @@
+# --- Never publish tasks, backups or personal data ---
+_original/
+_migration/
+data/
+*.db
+*.db-wal
+*.db-shm
+tasks-backup-*.json
+tasks-backup-*.txt
+tasks-*.json
+*.txt
+
+# --- The PC version (runs only on this computer) ---
+public/
+server.js
+Task Manager.vbs
+app.ico
+README-PC.md
+
+# --- Tool / editor files ---
+.claude/
+.vscode/
+Thumbs.db
+desktop.ini
