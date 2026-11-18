@@ -127,7 +127,9 @@ const catsDoc = () => doc(db, 'users', current.uid, 'meta', 'categories');
 
 // Live sync. onTasks(changes, { fromCache }) — changes: [{ type, id, data, local }]; onCats(items | null).
 function listen(onTasks, onCats) {
-  const u1 = onSnapshot(tasksCol(), { includeMetadataChanges: false }, (snap) => {
+  // includeMetadataChanges: also report when the server confirms the copy cached on this device
+  // (otherwise an unchanged list never says "from the server", and the status stays on "Loading…").
+  const u1 = onSnapshot(tasksCol(), { includeMetadataChanges: true }, (snap) => {
     const changes = snap.docChanges().map((c) => ({
       type: c.type, id: c.doc.id, data: c.doc.data(),
       local: c.doc.metadata.hasPendingWrites,
