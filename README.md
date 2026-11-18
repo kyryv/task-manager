@@ -3,7 +3,7 @@
 A personal task manager that runs in the browser and can be installed on a phone or PC like an app.
 Each person signs in with their own Google account and gets their own private list, synced between devices.
 
-- **Web address:** `https://<your-github-name>.github.io/task-manager/`
+- **Web address:** https://kyryv.github.io/task-manager/
 - **Data:** stored in Firebase Firestore, one document per task at `users/{uid}/tasks/{taskId}`,
   categories at `users/{uid}/meta/categories`. Works offline; changes sync when you are back online.
 - **Who can use it:** only Google accounts on the owner's allowed list (kept in the database, never in this repository).
