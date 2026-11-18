@@ -10,7 +10,10 @@
 [hidden]{display:none!important}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font:400 15px/1.45 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
-body::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(rgba(12,16,14,.45),rgba(12,16,14,.62)),url("bg.gif") center/cover no-repeat;image-rendering:pixelated}
+:root{--bg-default:radial-gradient(120% 85% at 12% 0%,#30503f 0%,rgba(48,80,63,0) 60%),radial-gradient(80% 70% at 100% 100%,#4b3527 0%,rgba(75,53,39,0) 58%),radial-gradient(60% 55% at 72% 28%,#243b31 0%,rgba(36,59,49,0) 62%),linear-gradient(165deg,#1d2a24 0%,#121816 100%)}
+/* Background: the person's own picture (--bg-user, set by the app) or the default gradient. */
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(rgba(12,16,14,.45),rgba(12,16,14,.62)),var(--bg-user,none) center/cover no-repeat,var(--bg-default)}
+body.bg-pixel::before{image-rendering:pixelated}
 button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 h1,h2,h3{font-family:Newsreader,Georgia,serif;font-weight:500;letter-spacing:-.01em;margin:0}
@@ -430,3 +433,8 @@ li.task.kind-big .gbar{height:10px}
 
 /* confetti layer for completed tasks */
 #confetti{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:400}
+
+/* ---------- personal background (Settings) ---------- */
+.bgrow{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.bgprev{width:132px;height:76px;flex:none;border-radius:10px;border:1px solid var(--line);background:linear-gradient(rgba(12,16,14,.45),rgba(12,16,14,.62)),var(--bg-user,none) center/cover no-repeat,var(--bg-default)}
+body.bg-pixel .bgprev{image-rendering:pixelated}

@@ -7,7 +7,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, onSnapshot,
-  writeBatch, getDoc, getDocs, getDocsFromServer, getCountFromServer, terminate, clearIndexedDbPersistence,
+  writeBatch, getDoc, getDocs, getDocsFromServer, getDocsFromCache, getCountFromServer, terminate, clearIndexedDbPersistence, Bytes,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
 
@@ -58,6 +58,8 @@ window.tmStore = {
   write,
   readAll,
   countServer,
+  saveBackground,
+  listenBackground,
 };
 
 if (!configured) {
@@ -163,4 +165,48 @@ async function readAll() {
 
 async function countServer() {
   return (await getCountFromServer(tasksCol())).data().count;
+}
+
+/* ---------- personal background picture ----------
+   Stored in the account so it shows on every device: users/{uid}/meta/background holds the details,
+   users/{uid}/bgparts/0,1,2… hold the image bytes in pieces (Firestore allows about 1 MB per document). */
+const PART = 900 * 1024;
+const bgMeta = () => doc(db, 'users', current.uid, 'meta', 'background');
+const bgParts = () => collection(db, 'users', current.uid, 'bgparts');
+
+// blob = the image to use, or null to go back to the default background.
+async function saveBackground(blob, pixel = false) {
+  let oldParts = 0;
+  try { const m = await getDoc(bgMeta()); oldParts = m.exists() ? (m.data().parts || 0) : 0; } catch {}
+  const b = writeBatch(db);
+  if (!blob) {
+    for (let i = 0; i < oldParts; i++) b.delete(doc(bgParts(), String(i)));
+    b.delete(bgMeta());
+    return b.commit();
+  }
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const v = Date.now(), n = Math.ceil(bytes.length / PART);
+  for (let i = 0; i < n; i++) b.set(doc(bgParts(), String(i)), { v, data: Bytes.fromUint8Array(bytes.subarray(i * PART, (i + 1) * PART)) });
+  for (let i = n; i < oldParts; i++) b.delete(doc(bgParts(), String(i)));
+  b.set(bgMeta(), { v, type: blob.type || 'image/png', size: bytes.length, parts: n, pixel: !!pixel });
+  return b.commit();
+}
+
+// cb({ url, pixel }) whenever the background changes (also from another device); cb(null) for the default.
+function listenBackground(cb) {
+  let shown = null;
+  return onSnapshot(bgMeta(), async (snap) => {
+    if (!snap.exists()) { if (shown !== 0) { shown = 0; cb(null); } return; }
+    const m = snap.data();
+    if (shown === m.v) return;
+    const usable = (docs) => docs.length >= m.parts && docs.every((d) => d.data().v === m.v);
+    let docs = [];
+    try { docs = (await getDocsFromCache(bgParts())).docs; } catch {}
+    if (!usable(docs)) { try { docs = (await getDocs(bgParts())).docs; } catch { return; } }
+    if (!usable(docs)) return; // pieces still on their way; the next snapshot tries again
+    docs.sort((a, b) => +a.id - +b.id);
+    const blob = new Blob(docs.slice(0, m.parts).map((d) => d.data().data.toUint8Array()), { type: m.type });
+    shown = m.v;
+    cb({ url: URL.createObjectURL(blob), pixel: !!m.pixel });
+  }, () => {});
 }

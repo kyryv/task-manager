@@ -12,6 +12,35 @@ The app files are in [`docs/`](docs/) (served by GitHub Pages). The database rul
 
 ---
 
+## Add or remove people (owner)
+
+Only Google accounts on the **allowed** list can use the app. Each person gets their own empty, private list.
+
+**Add a person**
+1. Ask them for the **Google email** they will sign in with.
+2. Open https://console.firebase.google.com → your project → **Build → Firestore Database** → tab **Data**.
+3. Click the **`allowed`** collection, then **+ Add document**.
+4. **Document ID:** their email **in lowercase**, exactly as their Google account (e.g. `friend@gmail.com`). Do not use Auto-ID.
+5. Add one field: Field `added`, Type `string`, Value `yes`. Click **Save**.
+6. Send them the web address. They can sign in right away (no need to wait or redeploy).
+
+**Remove a person**
+1. Same place: **Firestore Database → Data → `allowed`**.
+2. Click their email → **⋮** (next to the document name) → **Delete document** → **Delete**.
+3. From then on they see “This account has no access. Ask the owner.” Their stored tasks stay in the database
+   (under `users/…`) until you delete them; to remove those too, open **`users`**, find their user id
+   (shown in **Authentication → Users**), and delete that document **including its subcollections**.
+
+**What a new person does**
+1. Opens the web address and taps **Sign in with Google** (with the email you added).
+2. Optionally installs it as an app (see *Install the app* below).
+3. Optionally imports an old backup: **⚙ Settings → Import backup…** (an import report shows what was added).
+
+**If someone sees “This account has no access”**: the document ID does not match their Google email exactly
+(check spelling and lowercase), or they signed in with a different Google account.
+
+---
+
 ## Setup (owner, once)
 
 You need a free Firebase project (Spark plan, no card) and this repository on GitHub Pages.

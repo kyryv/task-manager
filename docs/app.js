@@ -551,9 +551,11 @@
     return c.id;
   }
 
+  // New tasks go to the top of their list: one below the smallest order value in use.
+  const topOrder = () => tasks.reduce((m, x) => Math.min(m, x.order), Date.now()) - 1;
   function newTask(fields) {
     const now = Date.now();
-    const t = norm({ id: uid(), created: now, updated: now, order: now, status: 'active', ...fields });
+    const t = norm({ id: uid(), created: now, updated: now, order: topOrder(), status: 'active', ...fields });
     tasks.push(t);
     return t;
   }
@@ -704,7 +706,8 @@
   });
   function addMany(lines) {
     const ids = [];
-    lines.forEach((line) => { const f = withRepeatDate(fromText(line, add)); if (f) ids.push(newTask(f).id); });
+    // Added last-to-first so the pasted list keeps its order at the top.
+    [...lines].reverse().forEach((line) => { const f = withRepeatDate(fromText(line, add)); if (f) ids.unshift(newTask(f).id); });
     addIn.value = ''; ignore = new Set(); renderPreview();
     touch(ids); render(); flashIds(ids);
     toast('Added ' + ids.length + ' tasks.', ids.map((id) => ({ id, t: null })));
@@ -2077,8 +2080,65 @@
       renderSoon();
     });
     $('signOutBtn').onclick = async () => { await flush(); store.signOut(); };
+    store.listenBackground(applyBg);
     let day = TODAY();
     setInterval(() => { if (TODAY() !== day) { day = TODAY(); render(); } }, 60000);
   }
+
+  /* ---------- personal background ---------- */
+  let bgUrl = null;
+  function applyBg(info) {
+    const old = bgUrl;
+    bgUrl = info ? info.url : null;
+    if (info) document.body.style.setProperty('--bg-user', 'url("' + info.url + '")');
+    else document.body.style.removeProperty('--bg-user');
+    document.body.classList.toggle('bg-pixel', !!(info && info.pixel));
+    if (old && old !== bgUrl) setTimeout(() => URL.revokeObjectURL(old), 2000);
+  }
+  const BG_MAX = 3 * 1024 * 1024;
+  const mb = (n) => (n / 1048576).toFixed(1) + ' MB';
+  // GIFs are kept as they are (so they stay animated) up to 3 MB; other pictures over 3 MB are made smaller.
+  async function prepareBg(file) {
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) throw new Error('Choose a PNG, JPG, WebP or GIF picture.');
+    if (file.type === 'image/gif' && file.size > BG_MAX) throw new Error('This GIF is ' + mb(file.size) + '. Animated GIFs can be up to 3 MB.');
+    let bmp;
+    try { bmp = await createImageBitmap(file); } catch { throw new Error('That picture could not be opened.'); }
+    const pixel = file.type === 'image/gif' || Math.max(bmp.width, bmp.height) < 900; // small / pixel art stays sharp
+    if (file.type === 'image/gif') {
+      if (file.size > BG_MAX) throw new Error('This GIF is ' + mb(file.size) + '. Animated GIFs can be up to 3 MB.');
+      return { blob: file, pixel };
+    }
+    if (file.size <= BG_MAX) return { blob: file, pixel };
+    let side = 2560, q = 0.85, blob = null;
+    for (let i = 0; i < 8 && (!blob || blob.size > BG_MAX); i++) {
+      const k = Math.min(1, side / Math.max(bmp.width, bmp.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+      c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+      blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', q));
+      side = Math.round(side * 0.85); q = Math.max(0.6, q - 0.05);
+    }
+    if (!blob || blob.size > BG_MAX) throw new Error('That picture is too large. Try a smaller one.');
+    return { blob, pixel: false };
+  }
+  $('bgPick').onclick = () => $('bgFile').click();
+  $('bgFile').onchange = async (e) => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try {
+      const p = await prepareBg(f);
+      applyBg({ url: URL.createObjectURL(p.blob), pixel: p.pixel });
+      toast('Saving your background…');
+      await store.saveBackground(p.blob, p.pixel);
+      toast('Background saved. It will show on your other devices too.');
+    } catch (err) {
+      toast(err.code ? 'Could not save the background: ' + err.code : err.message);
+    }
+  };
+  $('bgReset').onclick = async () => {
+    applyBg(null);
+    try { await store.saveBackground(null); toast('Back to the default background.'); }
+    catch (err) { toast('Could not save: ' + (err.code || err.message)); }
+  };
   init();
 })();

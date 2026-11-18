@@ -125,6 +125,19 @@
     </section>
 
     <section>
+      <h3>Background</h3>
+      <p class="hint">Use your own picture. It is saved in your account and shows on every device where you sign in. PNG, JPG, WebP or GIF; animated GIFs up to 3 MB stay animated, bigger photos are made smaller.</p>
+      <div class="bgrow">
+        <div class="bgprev" id="bgPrev" aria-hidden="true"></div>
+        <div class="btnrow">
+          <button type="button" class="btn" id="bgPick">Choose image…</button>
+          <button type="button" class="btn" id="bgReset">Use default</button>
+        </div>
+      </div>
+      <input type="file" id="bgFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+    </section>
+
+    <section>
       <h3>Your data</h3>
       <p class="hint" id="dataInfo"></p>
       <div class="btnrow">
