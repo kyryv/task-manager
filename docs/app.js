@@ -2057,6 +2057,8 @@
     fillCatSelect(); syncAddDates(); syncAddRep(); renderPreview();
     if (!store) { banner('<b>Could not load the app.</b> Check your internet connection and reload the page.', 'warn'); return; }
     const user = await store.ready; // the sign-in screen stays up until then
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    scrollTo(0, 0); // never open on an old scroll position
     render();
     let first = true;
     store.listen((changes, info) => {

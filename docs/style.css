@@ -438,3 +438,8 @@ li.task.kind-big .gbar{height:10px}
 .bgrow{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
 .bgprev{width:132px;height:76px;flex:none;border-radius:10px;border:1px solid var(--line);background:linear-gradient(rgba(12,16,14,.45),rgba(12,16,14,.62)),var(--bg-user,none) center/cover no-repeat,var(--bg-default)}
 body.bg-pixel .bgprev{image-rendering:pixelated}
+
+/* The desktop layout always fits the window, so the page itself never scrolls
+   (a leftover scroll position could shift everything a few pixels off the edge). */
+html{overflow-x:hidden}
+@media (min-width:901px) and (min-height:641px){html,body{overflow:hidden}}
