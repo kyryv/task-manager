@@ -908,14 +908,14 @@
     body.onclick = (e) => { if (!e.target.closest('.subs, .more, .goal, .subof')) openEdit(t.id); };
     // Subtask: a small link to its main task in the top-right corner.
     const par = t.parent && find(t.parent);
+    let subof = null;
     if (par && par.status !== 'deleted') {
       li.classList.add('is-sub');
-      const ch = el('button', 'subof'); ch.type = 'button';
-      ch.append(el('span', 'subarrow', '↳'), el('span', 'subname', par.title));
-      ch.title = 'Subtask of “' + par.title + '”. Click to open it.';
-      ch.setAttribute('aria-label', 'Open main task: ' + par.title);
-      ch.onclick = (e) => { e.stopPropagation(); openEdit(par.id); };
-      body.appendChild(ch);
+      subof = el('button', 'subof'); subof.type = 'button';
+      subof.append(el('span', 'subarrow', '↳'), el('span', 'subname', par.title));
+      subof.title = 'Subtask of “' + par.title + '”. Click to open it.';
+      subof.setAttribute('aria-label', 'Open main task: ' + par.title);
+      subof.onclick = (e) => { e.stopPropagation(); openEdit(par.id); };
     }
     body.appendChild(el('div', 'title', t.title));
 
@@ -950,6 +950,7 @@
       ch.title = n + ' of ' + kids.length + ' subtasks done';
       meta.appendChild(ch);
     }
+    if (subof) meta.appendChild(subof); // bottom-right: link to the main task
     if (meta.children.length) body.appendChild(meta);
     const pr = progressOf(t);
     if (pr) body.appendChild(goalRow(t, pr));
@@ -1673,27 +1674,50 @@
     box.appendChild(nb);
   }
 
+  // One date per task: a switch picks whether it is the day to do it or a deadline.
+  let dateMode = null; // 'date' (Do on) or 'due' (Deadline) for the open task
   function drawDates() {
     const t = editTask(); if (!t) return;
-    dlg.querySelectorAll('.datefield').forEach((box) => {
-      const f = box.dataset.field;
-      box.textContent = '';
-      const inp = el('input'); inp.type = 'date'; inp.value = t[f];
-      inp.setAttribute('aria-label', f === 'due' ? 'Deadline' : 'Do on');
-      inp.onchange = () => { t[f] = inp.value; drawDates(); editChanged(); };
-      box.appendChild(inp);
-      [['0', 'Today'], ['1', 'Tomorrow'], ['mon', 'Next Mon'], ['7', '+1 week']].forEach(([v, l]) => {
-        const b = el('button', 'q', l); b.type = 'button'; b.title = dayName(quick(v), true);
-        b.onclick = () => { t[f] = quick(v); drawDates(); editChanged(); };
-        box.appendChild(b);
-      });
-      if (t[f]) {
-        const x = el('button', 'q', 'Clear'); x.type = 'button';
-        x.onclick = () => { t[f] = ''; drawDates(); editChanged(); };
-        box.appendChild(x);
-        box.appendChild(el('span', 'rel' + (diff(t[f]) < 0 ? ' late' : ''), rel(t[f])));
-      }
+    if (!dateMode) dateMode = t.due && !t.date ? 'due' : 'date';
+    const f = dateMode, other = f === 'due' ? 'date' : 'due';
+    const box = $('eDate'); box.textContent = '';
+    const seg = el('div', 'seg small');
+    [['date', 'Do on', 'The day you plan to do it'], ['due', 'Deadline', 'The day it is due']].forEach(([m, l, tip]) => {
+      const b = el('button', m === f ? 'on' : '', l); b.type = 'button'; b.title = tip;
+      b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(m === f));
+      b.onclick = () => {
+        if (m === dateMode) return;
+        // Switching moves the date over: a task has one date, either a day to do it or a deadline.
+        if (t[dateMode] && !t[m]) { t[m] = t[dateMode]; t[dateMode] = ''; editChanged(); }
+        dateMode = m; drawDates(); drawKind();
+      };
+      seg.appendChild(b);
     });
+    box.appendChild(seg);
+    const inp = el('input'); inp.type = 'date'; inp.value = t[f];
+    inp.setAttribute('aria-label', f === 'due' ? 'Deadline' : 'Do on');
+    inp.onchange = () => { t[f] = inp.value; drawDates(); editChanged(); };
+    box.appendChild(inp);
+    [['0', 'Today'], ['1', 'Tomorrow'], ['mon', 'Next Mon'], ['7', '+1 week']].forEach(([v, l]) => {
+      const b = el('button', 'q', l); b.type = 'button'; b.title = dayName(quick(v), true);
+      b.onclick = () => { t[f] = quick(v); drawDates(); editChanged(); };
+      box.appendChild(b);
+    });
+    if (t[f]) {
+      const x = el('button', 'q', 'Clear'); x.type = 'button';
+      x.onclick = () => { t[f] = ''; drawDates(); editChanged(); };
+      box.appendChild(x);
+      box.appendChild(el('span', 'rel' + (diff(t[f]) < 0 ? ' late' : ''), rel(t[f])));
+    }
+    // Older tasks may have both; show the other one with a way to remove it.
+    if (t[other]) {
+      const note = el('span', 'rel alsodate');
+      note.append(document.createTextNode((other === 'due' ? 'Also has a deadline: ' : 'Also planned for: ') + dayName(t[other]) + ' · '));
+      const rm = el('button', 'linkish', 'Remove'); rm.type = 'button';
+      rm.onclick = () => { t[other] = ''; drawDates(); editChanged(); };
+      note.appendChild(rm);
+      box.appendChild(note);
+    }
     drawRepeat();
   }
 
@@ -1765,6 +1789,7 @@
   // Deadline type: simple · count goal (+/−) · big deadline (parts = other tasks linked to it).
   function drawKind() {
     const t = editTask(); if (!t) return;
+    $('eKindRow').hidden = dateMode !== 'due' && !t.kind; // deadline types are for deadlines
     const seg = $('eKind'); seg.textContent = '';
     [['', 'Simple', 'A normal task or deadline'], ['count', 'Count goal', 'Reach a number, e.g. get 20 clients'], ['big', 'Big deadline', 'Made of other tasks and deadlines']].forEach(([k, l, tip]) => {
       const b = el('button', null, l); b.type = 'button'; b.title = tip;
@@ -1911,7 +1936,7 @@
     if (!find(id)) return;
     closePop();
     edit.id = id; edit.snap = clone(find(id));
-    repCustom = false;
+    repCustom = false; dateMode = null;
     $('eRevert').hidden = true;
     fillEdit();
     dlg.showModal();

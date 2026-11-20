@@ -100,9 +100,8 @@
     <textarea id="eTitle" class="etitle" rows="1" maxlength="300" aria-label="Title" placeholder="Task title"></textarea>
     <textarea id="eDesc" rows="3" maxlength="5000" placeholder="Notes, links, details…" aria-label="Notes"></textarea>
     <div class="erow"><span class="elbl">Category</span><div class="chips" id="eCats"></div></div>
-    <div class="erow"><span class="elbl"><span data-icon="cal"></span>Do on</span><div class="datefield" data-field="date"></div></div>
-    <div class="erow"><span class="elbl"><span data-icon="flag"></span>Deadline</span><div class="datefield" data-field="due"></div></div>
-    <div class="erow"><span class="elbl">Deadline type</span><div class="seg small" id="eKind" role="radiogroup" aria-label="Deadline type"></div></div>
+    <div class="erow"><span class="elbl"><span data-icon="cal"></span>Date</span><div class="datefield" id="eDate"></div></div>
+    <div class="erow" id="eKindRow"><span class="elbl">Deadline type</span><div class="seg small" id="eKind" role="radiogroup" aria-label="Deadline type"></div></div>
     <div class="kindbox" id="eKindBox"></div>
     <div class="erow" id="ePartRow"><span class="elbl">Subtask of</span><select id="eParent" class="pill" aria-label="Main task"></select></div>
     <div class="erow"><span class="elbl"><span data-icon="repeat"></span>Repeat</span><div class="repfield" id="eRepeat"></div></div>

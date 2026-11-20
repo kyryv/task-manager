@@ -446,7 +446,7 @@ html{overflow-x:hidden}
 
 /* ---------- subtasks are real tasks ---------- */
 /* Small link to the main task in the top-right corner of a subtask card */
-.subof{float:right;display:inline-flex;align-items:center;gap:3px;max-width:46%;margin:-1px -2px 3px 8px;padding:1px 8px;border:1px dashed color-mix(in srgb,var(--due) 55%,transparent);border-radius:99px;background:rgba(20,24,22,.55);color:var(--due);font:500 11.5px/18px Inter,system-ui,sans-serif;cursor:pointer}
+.subof{display:inline-flex;align-items:center;gap:3px;max-width:60%;margin:0 0 0 auto;padding:1px 8px;border:1px dashed color-mix(in srgb,var(--due) 55%,transparent);border-radius:99px;background:rgba(20,24,22,.55);color:var(--due);font:500 11.5px/18px Inter,system-ui,sans-serif;cursor:pointer}
 .subof:hover{border-style:solid}
 .subarrow{flex:none}
 .subname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
@@ -546,8 +546,6 @@ html{overflow-x:hidden}
   .linkbtn{order:10;margin-left:auto;font-size:12.5px}
 }
 
-/* Subtask cards: the hover buttons go to the bottom-right so the "↳ main task" link stays visible */
-li.task.is-sub .acts{top:auto;bottom:4px}
 /* Subtask rows in the task window: editable title + open button */
 .esubs .sname{flex:1;min-width:0;background:transparent;border:1px solid transparent;border-radius:8px;padding:5px 8px;font-size:14.5px;color:var(--ink);outline:0}
 .esubs .sname:hover{border-color:var(--line)}
@@ -557,3 +555,7 @@ li.task.is-sub .acts{top:auto;bottom:4px}
 .backlink{display:inline-flex;align-items:baseline;gap:4px;max-width:100%;background:none;border:0;padding:0;font:600 15px Inter,system-ui,sans-serif;color:var(--due);cursor:pointer;text-align:left}
 .backlink b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .backlink:hover b{text-decoration:underline}
+/* one Date row in the task window */
+.datefield .seg{margin-right:2px}
+.alsodate{flex-basis:100%}
+.linkish{background:none;border:0;padding:0;color:var(--accent);font:inherit;cursor:pointer;text-decoration:underline}
