@@ -1,7 +1,7 @@
 // Service worker: lets the app be installed and open without a connection.
 // The app's own files are fetched fresh when online (so updates show up) and served from the cache when offline.
 // Firebase's database and sign-in traffic is never touched here; Firestore has its own offline cache.
-const CACHE = 'tasks-v2';
+const CACHE = 'tasks-v3';
 const SHELL = [
   './', 'index.html', 'style.css', 'signin.css', 'app.js', 'store.js', 'firebase-config.js',
   'icon.svg', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
@@ -32,8 +32,12 @@ self.addEventListener('fetch', (e) => {
     })));
     return;
   }
-  // The app's own files: network first, cache as fallback.
-  e.respondWith(fetch(req).then((res) => {
+  // The app's own files: network first, cache as fallback. "no-cache" makes the browser ask GitHub whether the
+  // file changed instead of reusing its 10-minute copy, so an update shows on the next reload.
+  const fresh = req.mode === 'navigate'
+    ? fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' })
+    : fetch(new Request(req, { cache: 'no-cache' }));
+  e.respondWith(fresh.then((res) => {
     if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
     return res;
   }).catch(() => caches.match(req, { ignoreSearch: true }).then((hit) => hit || caches.match('index.html'))));
