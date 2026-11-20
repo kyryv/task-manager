@@ -559,3 +559,23 @@ html{overflow-x:hidden}
 .datefield .seg{margin-right:2px}
 .alsodate{flex-basis:100%}
 .linkish{background:none;border:0;padding:0;color:var(--accent);font:inherit;cursor:pointer;text-decoration:underline}
+
+/* ---------- simpler task window ---------- */
+.emore{border-top:1px solid var(--line);padding-top:8px}
+.emore>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);padding:2px 0;user-select:none}
+.emore>summary::-webkit-details-marker{display:none}
+.emore>summary::before{content:"▸";font-size:11px;transition:transform .15s}
+.emore[open]>summary::before{transform:rotate(90deg)}
+.emore>summary:hover{color:var(--ink)}
+.emoresum{color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.emore[open]{display:grid;gap:12px}
+.emore[open]>summary{margin-bottom:-2px}
+.switch{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer}
+.switch input{accent-color:var(--accent);width:16px;height:16px;margin:0}
+/* Settings: shortcuts folded into Help */
+.helpbox>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
+.helpbox>summary::-webkit-details-marker{display:none}
+.helpbox>summary::before{content:"▸";font-size:12px;color:var(--muted);transition:transform .15s}
+.helpbox[open]>summary::before{transform:rotate(90deg)}
+.helpbox>summary h3{display:inline}
+.helpbox[open]{display:grid;gap:8px}

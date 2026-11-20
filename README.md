@@ -123,6 +123,15 @@ The app owner can still see stored data in the Firebase console. The sign-in scr
 
 ---
 
+## Dates, goals and repeats
+- Each task has one date: either the day you plan to **do** it, or a **deadline**.
+  Choose with the **Date** button in the add box, or the **Do on | Deadline** switch in the task window.
+  Typing works too: `fri` plans it, `due fri` makes it a deadline.
+- In the task window, **More options** holds the rarer settings: **Repeat**, **Subtask of**,
+  and for deadlines a **Count goal** (e.g. *get 20 clients*: press **+** on the card each time).
+  It opens by itself when one of them is set.
+- The category shows as the colour on the left edge of each card.
+
 ## Subtasks
 - Open a task and type in **Subtasks** (Enter to add; you can write dates too, e.g. *Draft chapter 1 due fri*; paste a list to add many),
   or pick **Add an existing task as a subtask…**. A task can also be made a subtask with **Subtask of** in its own window.

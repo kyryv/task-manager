@@ -124,7 +124,7 @@
       cat: t.cat != null ? String(t.cat) : t.tag ? String(t.tag) : '',
       date, due,
       repeat: typeof t.repeat === 'string' && parseSpec(t.repeat) ? t.repeat : '',
-      kind: t.kind === 'count' || t.kind === 'big' ? t.kind : '',
+      kind: t.kind === 'count' ? 'count' : '',
       goal: Math.max(0, Math.round(+t.goal) || 0),
       count: Math.max(0, Math.round(+t.count) || 0),
       parent: t.parent ? String(t.parent) : '',
@@ -618,19 +618,15 @@
     s.classList.toggle('set', !!add.repeat);
   }
   function syncAddDates() {
-    [['newDo', 'date', 'Do on'], ['newDue', 'due', 'Deadline']].forEach(([id, f, label]) => {
-      const b = $(id);
-      b.classList.toggle('set', !!add[f]);
-      b.querySelector('.lbl').textContent = add[f] ? (f === 'due' ? 'Due ' : '') + dLabel(add[f]) : label;
-      b.title = add[f] ? 'Click to change or remove' : f === 'due' ? 'Set a deadline' : 'Plan a day to do it';
-    });
+    const b = $('newDate'), f = add.due ? 'due' : 'date';
+    b.classList.toggle('set', !!add[f]);
+    b.querySelector('.lbl').textContent = add[f] ? (f === 'due' ? 'Due ' : '') + dLabel(add[f]) : 'Date';
+    b.title = add[f] ? 'Click to change or remove' : 'Plan a day to do it, or set a deadline';
   }
-  ['newDo', 'newDue'].forEach((id) => {
-    $(id).onclick = (e) => {
-      const f = e.currentTarget.dataset.field;
-      openPop(e.currentTarget, { field: f, fixed: true, value: add[f], set: (field, v) => { add[field] = v; syncAddDates(); renderPreview(); addIn.focus(); } });
-    };
-  });
+  $('newDate').onclick = (e) => {
+    openPop(e.currentTarget, { field: add.due ? 'due' : 'date', values: add,
+      set: (field, v) => { add.date = ''; add.due = ''; add[field] = v; syncAddDates(); renderPreview(); addIn.focus(); } });
+  };
 
   function renderPreview() {
     preview.textContent = '';
@@ -647,7 +643,7 @@
     }
     const text = addIn.value.trim();
     if (!text) {
-      preview.appendChild(el('span', null, 'Tip: tomorrow · fri · 20.11 · due fri · every mon · #work. Paste a list to add many.'));
+      if ((prefs.added || 0) < 5) preview.appendChild(el('span', null, 'Tip: tomorrow · fri · 20.11 · due fri · every mon · #work. Paste a list to add many.'));
       return;
     }
     const p = parseQuick(text, ignore);
@@ -699,6 +695,7 @@
     const f = withRepeatDate(fromText(addIn.value, { ...add, ignore }));
     if (!f) { addIn.focus(); return; }
     const t = newTask(f);
+    prefs.added = (prefs.added || 0) + 1; savePrefs();
     addIn.value = ''; ignore = new Set(); add.date = ''; add.due = ''; add.repeat = '';
     syncAddDates(); syncAddRep(); renderPreview();
     if (tab === 'done') tab = 'board';
@@ -772,7 +769,7 @@
   }
   function syncPop() {
     const f = popCtx.field;
-    const val = popCtx.task ? (find(popCtx.task) || {})[f] : popCtx.value;
+    const val = popCtx.task ? (find(popCtx.task) || {})[f] : popCtx.values ? popCtx.values[f] : popCtx.value;
     $('popHead').textContent = (f === 'due' ? 'Deadline' : 'Do on') + (val ? ': ' + dLabel(val) : '');
     $('popMode').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.m === f));
     $('popDate').value = val || '';
@@ -799,7 +796,7 @@
   function setTaskDate(id, field, v) {
     const t = find(id); if (!t) return;
     const label = field === 'due' ? 'Deadline' : 'Planned';
-    commit([id], () => { t[field] = v; }, v ? `${label}: ${dLabel(v)}.` : (field === 'due' ? 'Deadline removed.' : 'Date removed. It is back on the board.'));
+    commit([id], () => { t[field] = v; if (v) t[field === 'due' ? 'date' : 'due'] = ''; }, v ? `${label}: ${dLabel(v)}.` : (field === 'due' ? 'Deadline removed.' : 'Date removed. It is back on the board.'));
   }
 
   /* =====================================================================
@@ -920,7 +917,6 @@
     body.appendChild(el('div', 'title', t.title));
 
     const meta = el('div', 'meta');
-    if (c && !prefs.filter) { const ch = el('span', 'chip cat', c.name); meta.appendChild(ch); }
     if (t.date && ctx.showDate !== false && !(ctx.todayCol && t.date === now)) {
       const late = t.date < now;
       const ch = el('span', 'chip ' + (late ? 'late' : 'on'));
@@ -961,13 +957,10 @@
     const res = el('button', 'ib'); res.type = 'button'; res.innerHTML = ICON.cal; res.title = 'Date or deadline';
     res.setAttribute('aria-label', 'Set date: ' + t.title);
     res.onclick = (e) => { e.stopPropagation(); openPop(res, { task: t.id, field: t.due && !t.date ? 'due' : 'date' }); };
-    const ed = el('button', 'ib'); ed.type = 'button'; ed.innerHTML = ICON.edit; ed.title = 'Open';
-    ed.setAttribute('aria-label', 'Edit: ' + t.title);
-    ed.onclick = () => openEdit(t.id);
     const del = el('button', 'ib del'); del.type = 'button'; del.innerHTML = ICON.trash; del.title = 'Delete (you can undo)';
     del.setAttribute('aria-label', 'Delete: ' + t.title);
     del.onclick = () => remove(t.id);
-    acts.append(res, ed, del);
+    acts.append(res, del);
     li.append(chk, body, acts);
     return li;
   }
@@ -1149,7 +1142,6 @@
     board.appendChild(panel({
       cls: 'inbox', title: 'Schedule', sub: 'No date or deadline yet', items, key: 'inbox', zone: 'inbox',
       ctx: { now }, empty: search ? 'No matches.' : 'Nothing waiting. New tasks without a date land here. Drag one to Today, or onto a day in Dates.',
-      addDefaults: {}, addLabel: 'Add a task to Schedule',
     }));
 
     const sp = el('div', 'splitter');
@@ -1620,6 +1612,7 @@
     const t = editTask(); if (!t) return;
     t.updated = Date.now();
     $('eRevert').hidden = false;
+    moreSummary();
     const go = () => { touch([t.id]); render(); const s = $('eSaved'); s.textContent = 'Saved'; s.classList.add('flash'); setTimeout(() => { s.textContent = 'Changes save automatically'; s.classList.remove('flash'); }, 1200); };
     if (delay) edit.timer = setTimeout(go, delay); else go();
   }
@@ -1789,19 +1782,11 @@
   // Deadline type: simple · count goal (+/−) · big deadline (parts = other tasks linked to it).
   function drawKind() {
     const t = editTask(); if (!t) return;
-    $('eKindRow').hidden = dateMode !== 'due' && !t.kind; // deadline types are for deadlines
-    const seg = $('eKind'); seg.textContent = '';
-    [['', 'Simple', 'A normal task or deadline'], ['count', 'Count goal', 'Reach a number, e.g. get 20 clients'], ['big', 'Big deadline', 'Made of other tasks and deadlines']].forEach(([k, l, tip]) => {
-      const b = el('button', null, l); b.type = 'button'; b.title = tip;
-      b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(t.kind === k));
-      b.classList.toggle('on', t.kind === k);
-      b.onclick = () => {
-        t.kind = k;
-        if (k === 'count' && !t.goal) t.goal = 10;
-        drawKind(); editChanged();
-      };
-      seg.appendChild(b);
-    });
+    $('eKindRow').hidden = dateMode !== 'due' && !t.kind; // count goals are for deadlines
+    const sw = $('eKind');
+    sw.checked = t.kind === 'count';
+    sw.onchange = () => { t.kind = sw.checked ? 'count' : ''; if (sw.checked && !t.goal) t.goal = 10; drawKind(); editChanged(); };
+    moreSummary();
 
     const box = $('eKindBox'); box.textContent = '';
     box.hidden = !t.kind;
@@ -1842,11 +1827,19 @@
       t.parent = sel.value;
       const p = find(t.parent);
       if (p) { t.cat = p.cat; touch(syncChildCats(t)); }
-      drawCats(); editChanged();
+      drawCats(); editChanged(); moreSummary();
     };
   }
 
   // Subtasks of the open task: real tasks linked to it. Click one to open it; drag the handle to reorder.
+  function moreSummary() {
+    const t = editTask(); if (!t) return;
+    const bits = [];
+    if (t.repeat) bits.push(repeatLabel(t.repeat));
+    const p = t.parent && find(t.parent); if (p) bits.push('subtask of ' + short(p.title));
+    if (t.kind === 'count') bits.push('goal ' + t.count + ' / ' + t.goal);
+    $('eMoreSum').textContent = bits.length ? '· ' + bits.join(' · ') : '';
+  }
   function drawSubs() {
     const t = editTask(); if (!t) return;
     eSubs.textContent = '';
@@ -1920,6 +1913,8 @@
     eTitle.value = t.title; eTitle.classList.remove('bad');
     eDesc.value = t.desc;
     drawCats(); drawDates(); drawSubs(); drawKind();
+    $('eMore').open = !!(t.repeat || t.kind || t.parent);
+    moreSummary();
     eSubNew.value = '';
     const head = $('eHead'); head.textContent = '';
     const main = t.parent && find(t.parent);

@@ -53,8 +53,7 @@
     </div>
     <div class="addopts">
       <select id="newCat" class="pill" aria-label="Category"></select>
-      <button type="button" class="pill" id="newDo" data-field="date"><span data-icon="cal"></span><span class="lbl">Do on</span></button>
-      <button type="button" class="pill" id="newDue" data-field="due"><span data-icon="flag"></span><span class="lbl">Deadline</span></button>
+      <button type="button" class="pill" id="newDate"><span data-icon="cal"></span><span class="lbl">Date</span></button>
       <select id="newRep" class="pill" aria-label="Repeat" title="Repeat this task"></select>
       <div id="preview" class="preview"></div>
     </div>
@@ -101,16 +100,19 @@
     <textarea id="eDesc" rows="3" maxlength="5000" placeholder="Notes, links, details…" aria-label="Notes"></textarea>
     <div class="erow"><span class="elbl">Category</span><div class="chips" id="eCats"></div></div>
     <div class="erow"><span class="elbl"><span data-icon="cal"></span>Date</span><div class="datefield" id="eDate"></div></div>
-    <div class="erow" id="eKindRow"><span class="elbl">Deadline type</span><div class="seg small" id="eKind" role="radiogroup" aria-label="Deadline type"></div></div>
-    <div class="kindbox" id="eKindBox"></div>
-    <div class="erow" id="ePartRow"><span class="elbl">Subtask of</span><select id="eParent" class="pill" aria-label="Main task"></select></div>
-    <div class="erow"><span class="elbl"><span data-icon="repeat"></span>Repeat</span><div class="repfield" id="eRepeat"></div></div>
     <div class="esubwrap">
       <div class="elbl">Subtasks <span id="eSubCount"></span></div>
       <ul class="esubs" id="eSubs" data-zone="dsubs" data-items="li"></ul>
       <input type="text" id="eSubNew" placeholder="Add a subtask and press Enter (e.g. “Draft chapter 1 due fri”; paste a list to add many)" maxlength="2000" aria-label="New subtask">
       <select id="eSubLink" class="pill" aria-label="Add an existing task as a subtask"></select>
     </div>
+    <details class="emore" id="eMore">
+      <summary>More options <span class="emoresum" id="eMoreSum"></span></summary>
+      <div class="erow"><span class="elbl"><span data-icon="repeat"></span>Repeat</span><div class="repfield" id="eRepeat"></div></div>
+      <div class="erow" id="ePartRow"><span class="elbl">Subtask of</span><select id="eParent" class="pill" aria-label="Main task"></select></div>
+      <div class="erow" id="eKindRow"><span class="elbl">Count goal</span><label class="switch"><input type="checkbox" id="eKind"><span>Reach a number, e.g. get 20 clients</span></label></div>
+      <div class="kindbox" id="eKindBox"></div>
+    </details>
     <div class="dlgbar">
       <button type="button" class="btn danger" id="eDelete"><span data-icon="trash"></span>Delete</button>
       <span class="grow"></span>
@@ -158,6 +160,8 @@
     </section>
 
     <section>
+      <details class="helpbox">
+      <summary><h3>Help: typing and keyboard shortcuts</h3></summary>
       <h3>Typing shortcuts in the add box</h3>
       <table class="keys">
         <tr><td><code>today</code> <code>tomorrow</code> <code>fri</code> <code>next mon</code> <code>20.11</code> <code>nov 20</code> <code>in 3 days</code></td><td>Do on that day</td></tr>
@@ -174,6 +178,7 @@
         <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Undo the last complete, delete or move</td></tr>
         <tr><td><kbd>Esc</kbd></td><td>Close, cancel a drag, clear search</td></tr>
       </table>
+      </details>
     </section>
   </div>
 </dialog>
