@@ -720,10 +720,21 @@
   const isPhone = () => matchMedia('(max-width:640px)').matches;
   // The add bar shows its options (category, dates, repeat) only while you are adding a task.
   addForm.addEventListener('focusin', () => addForm.classList.add('open'));
+  // Android's Back button only hides the keyboard and leaves the text box focused. When the keyboard goes away
+  // while typing in the add box, treat it as leaving: fold the options away (typed text stays).
+  let tallest = innerHeight;
+  const keyboardGone = () => {
+    const h = window.visualViewport ? visualViewport.height : innerHeight;
+    if (h > tallest - 80 && document.activeElement === addIn && isPhone() && kbWasOpen) { addIn.blur(); addForm.classList.remove('open'); }
+    kbWasOpen = h < tallest - 150;
+    tallest = Math.max(tallest, h);
+  };
+  let kbWasOpen = false;
+  addEventListener('resize', keyboardGone);
+  if (window.visualViewport) visualViewport.addEventListener('resize', keyboardGone);
   addForm.addEventListener('focusout', () => setTimeout(() => {
-    if (addForm.contains(document.activeElement) || !$('datePop').hidden || addIn.value.trim() || pasted) return;
-    addForm.classList.remove('open');
-  }, 150));
+    if (!addForm.contains(document.activeElement) && $('datePop').hidden && !pasted) addForm.classList.remove('open');
+  }, 160));
   // Keep the bottom add bar above the on-screen keyboard (iPhone; Android resizes the page itself).
   if (window.visualViewport) {
     const vv = window.visualViewport;
