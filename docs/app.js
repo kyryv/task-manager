@@ -1839,15 +1839,27 @@
         s.status = cb.checked ? 'done' : 'active'; s.closedAt = cb.checked ? Date.now() : 0; s.updated = Date.now();
         touch([s.id]); drawSubs(); render();
       };
-      const name = el('button', 'pname', s.title); name.type = 'button'; name.title = 'Open this subtask';
-      name.onclick = () => { closeEdit(); openEdit(s.id); };
+      // Rename right here; the pencil opens the subtask's own window (dates, notes, repeat…).
+      const name = el('input'); name.type = 'text'; name.className = 'sname'; name.value = s.title; name.maxLength = 300;
+      name.setAttribute('aria-label', 'Subtask title');
+      let renameTimer = 0;
+      name.oninput = () => {
+        const v = name.value.trim(); if (!v) return;
+        clearTimeout(renameTimer);
+        renameTimer = setTimeout(() => { s.title = v.slice(0, 300); s.updated = Date.now(); touch([s.id]); render(); }, 400);
+      };
+      name.onblur = () => { if (!name.value.trim()) name.value = s.title; };
+      name.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); eSubNew.focus(); } };
+      const open = el('button', 'ib'); open.type = 'button'; open.innerHTML = ICON.edit; open.title = 'Open this subtask (dates, notes, repeat…)';
+      open.setAttribute('aria-label', 'Open subtask: ' + s.title);
+      open.onclick = () => { closeEdit(); openEdit(s.id); };
       li.append(h, cb, name);
       const d = s.due || s.date;
       if (d) li.appendChild(el('span', 'chip ' + (s.due ? (diff(s.due) < 0 && !done ? 'late' : 'dl') : 'on'), (s.due ? 'Due ' : '') + dLabel(d)));
       const x = el('button', 'ib del'); x.type = 'button'; x.innerHTML = ICON.trash; x.title = 'Delete this subtask (you can undo)';
       x.setAttribute('aria-label', 'Delete subtask: ' + s.title);
       x.onclick = () => { remove(s.id); drawSubs(); };
-      li.appendChild(x);
+      li.append(open, x);
       eSubs.appendChild(li);
     });
     // Make an existing task a subtask of this one.
@@ -1884,6 +1896,15 @@
     eDesc.value = t.desc;
     drawCats(); drawDates(); drawSubs(); drawKind();
     eSubNew.value = '';
+    const head = $('eHead'); head.textContent = '';
+    const main = t.parent && find(t.parent);
+    if (main && main.status !== 'deleted') {
+      const back = el('button', 'backlink'); back.type = 'button';
+      back.append(el('span', null, '↳ Subtask of '), el('b', null, main.title));
+      back.title = 'Open the main task';
+      back.onclick = () => { closeEdit(); openEdit(main.id); };
+      head.appendChild(back);
+    } else head.textContent = 'Task';
     requestAnimationFrame(autosize);
   }
   function openEdit(id) {

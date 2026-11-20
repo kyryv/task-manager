@@ -545,3 +545,15 @@ html{overflow-x:hidden}
   .tprog{order:9;flex:1 1 55%;max-width:none}
   .linkbtn{order:10;margin-left:auto;font-size:12.5px}
 }
+
+/* Subtask cards: the hover buttons go to the bottom-right so the "↳ main task" link stays visible */
+li.task.is-sub .acts{top:auto;bottom:4px}
+/* Subtask rows in the task window: editable title + open button */
+.esubs .sname{flex:1;min-width:0;background:transparent;border:1px solid transparent;border-radius:8px;padding:5px 8px;font-size:14.5px;color:var(--ink);outline:0}
+.esubs .sname:hover{border-color:var(--line)}
+.esubs .sname:focus{border-color:var(--accent);background:var(--bg)}
+.esubs li.done .sname{color:var(--faint);text-decoration:line-through}
+/* "↳ Subtask of …" heading in a subtask's window */
+.backlink{display:inline-flex;align-items:baseline;gap:4px;max-width:100%;background:none;border:0;padding:0;font:600 15px Inter,system-ui,sans-serif;color:var(--due);cursor:pointer;text-align:left}
+.backlink b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.backlink:hover b{text-decoration:underline}
