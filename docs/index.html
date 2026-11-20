@@ -22,6 +22,12 @@
     <div class="brand">
       <svg class="logo" viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="var(--accent)"/><path d="M9 16.5l4.8 4.8L23 11.5" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <h1>Tasks</h1>
+      <button type="button" class="viewbtn" id="viewBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Switch view"><span id="viewName">Board</span><span class="caret" aria-hidden="true">▾</span></button>
+      <div class="viewmenu" id="viewMenu" role="menu" hidden>
+        <button type="button" role="menuitem" data-view="board"><span data-icon="list"></span>Board</button>
+        <button type="button" role="menuitem" data-view="dates"><span data-icon="cal"></span>Dates<span class="n"></span></button>
+        <button type="button" role="menuitem" data-view="done"><span data-icon="check"></span>Completed<span class="n"></span></button>
+      </div>
     </div>
     <nav class="tabs" role="tablist" aria-label="Views">
       <button class="tab" role="tab" id="tab-board" data-tab="board" data-zone="tab:board" title="Board (1)">Board</button>
@@ -31,6 +37,7 @@
     <div class="filters" id="filters" role="toolbar" aria-label="Filter by category"></div>
     <div class="tools">
       <label class="search"><span data-icon="search"></span><input type="search" id="search" placeholder="Search" aria-label="Search tasks" autocomplete="off"><kbd>/</kbd></label>
+      <button type="button" class="iconbtn filterbtn" id="filterBtn" aria-expanded="false" aria-label="Filter by category" title="Filter by category"><span data-icon="filter"></span></button>
       <span id="saveState" class="save" role="status" aria-live="polite"></span>
       <button type="button" class="iconbtn" id="settingsBtn" title="Categories, backups and shortcuts" aria-label="Settings"><span data-icon="gear"></span></button>
     </div>

@@ -34,6 +34,7 @@
     arrow: svg('<path d="M3 8h10M9 4l4 4-4 4"/>'),
     sun: svg('<circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/>'),
     list: svg('<path d="M3 4.5h10M3 8h10M3 11.5h6"/>'),
+    filter: svg('<path d="M2.5 3.5h11l-4.2 5v4l-2.6 1.5V8.5z"/>'),
     repeat: svg('<path d="M2.8 7.2A5 5 0 0 1 11.6 4.4L13 5.8M13 2.6v3.2H9.8M13.2 8.8A5 5 0 0 1 4.4 11.6L3 10.2M3 13.4v-3.2h3.2"/>'),
   };
   const ic = (name, cls = 'ic') => { const s = document.createElement('span'); s.className = cls; s.innerHTML = ICON[name]; return s; };
@@ -1124,6 +1125,7 @@
     const dated = active.filter((t) => t.date || t.due).length;
     $('tab-dates').querySelector('.n').textContent = dated ? String(dated) : '';
     $('tab-done').querySelector('.n').textContent = closed.filter((t) => t.status === 'done').length || '';
+    syncPhoneHeader();
     renderFilters(active);
     view.textContent = '';
 
@@ -1165,14 +1167,16 @@
 
     const head = el('div', 'thead');
     head.appendChild(el('h2', null, 'Today'));
-    head.appendChild(el('span', 'tdate', today0().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })));
+    const two = (cls, long, shortText) => { const e = el('span', cls); e.append(el('span', 'lf', long), el('span', 'ls', shortText)); return e; };
+    head.appendChild(two('tdate', today0().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }),
+      today0().toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })));
     const stats = el('div', 'tstats');
     // "to do" counts only today's tasks; overdue ones have their own count, so nothing is counted twice.
-    if (todays.length - lateN) stats.appendChild(el('span', 'stat', (todays.length - lateN) + ' to do'));
-    if (lateN) stats.appendChild(el('span', 'stat late', lateN + ' overdue'));
-    if (doneToday) stats.appendChild(el('span', 'stat okk', '✓ ' + doneToday + ' done today'));
+    if (todays.length - lateN) stats.appendChild(two('stat', (todays.length - lateN) + ' to do', (todays.length - lateN) + ' to do'));
+    if (lateN) stats.appendChild(two('stat late', lateN + ' overdue', lateN + ' late'));
+    if (doneToday) stats.appendChild(two('stat okk', '✓ ' + doneToday + ' done today', '✓ ' + doneToday));
     head.appendChild(stats);
-    const tadd = addButton('today', 'Add a task for today'); tadd.classList.add('wide'); tadd.append(document.createTextNode('Add for today'));
+    const tadd = addButton('today', 'Add a task for today'); tadd.classList.add('wide'); tadd.append(el('span', 'lf', 'Add for today'));
     if (todays.length + doneToday) {
       const prog = el('div', 'tprog'); prog.title = doneToday + ' of ' + (todays.length + doneToday) + ' done today';
       const bar = el('i'); bar.style.width = (100 * doneToday / (todays.length + doneToday)) + '%'; prog.appendChild(bar);
@@ -1180,7 +1184,8 @@
     }
     if (soon.length) {
       const l = el('button', 'linkbtn'); l.type = 'button';
-      l.append(ic('flag'), document.createTextNode(soon.length + (soon.length === 1 ? ' deadline' : ' deadlines') + ' in the next 7 days'), ic('arrow'));
+      l.append(ic('flag'), el('span', 'lf', soon.length + (soon.length === 1 ? ' deadline' : ' deadlines') + ' in the next 7 days'), el('span', 'ls', soon.length + ' soon'), ic('arrow'));
+      l.title = soon.length + (soon.length === 1 ? ' deadline' : ' deadlines') + ' in the next 7 days';
       l.onclick = () => setTab('dates');
       head.appendChild(l);
     }
@@ -1359,6 +1364,32 @@
     tab = n; prefs.tab = n; savePrefs(); closePop(); inlineAdd = null; render();
   }
   TABS.forEach((n) => { $('tab-' + n).onclick = () => setTab(n); });
+
+  /* ---------- phones: the title switches views; categories sit behind a filter icon ---------- */
+  const VIEW_NAMES = { board: 'Board', dates: 'Dates', done: 'Completed' };
+  const viewMenu = $('viewMenu'), viewBtn = $('viewBtn'), filterBtn = $('filterBtn');
+  function syncPhoneHeader() {
+    $('viewName').textContent = VIEW_NAMES[tab];
+    viewMenu.querySelectorAll('[data-view]').forEach((b) => {
+      b.classList.toggle('on', b.dataset.view === tab);
+      const n = b.querySelector('.n'), src = $('tab-' + b.dataset.view).querySelector('.n');
+      if (n && src) n.textContent = src.textContent;
+    });
+    const c = prefs.filter && catOf(prefs.filter);
+    filterBtn.classList.toggle('on', !!c);
+    if (c) filterBtn.style.setProperty('--cc', c.color); else filterBtn.style.removeProperty('--cc');
+    filterBtn.title = c ? 'Showing only ' + c.name : 'Filter by category';
+  }
+  function closeViewMenu() { viewMenu.hidden = true; viewBtn.setAttribute('aria-expanded', 'false'); }
+  viewBtn.onclick = (e) => { e.stopPropagation(); const open = viewMenu.hidden; viewMenu.hidden = !open; viewBtn.setAttribute('aria-expanded', String(open)); };
+  viewMenu.querySelectorAll('[data-view]').forEach((b) => { b.onclick = () => { closeViewMenu(); setTab(b.dataset.view); }; });
+  document.addEventListener('pointerdown', (e) => { if (!viewMenu.hidden && !viewMenu.contains(e.target) && !viewBtn.contains(e.target)) closeViewMenu(); });
+  const topEl = document.querySelector('.top');
+  filterBtn.onclick = () => { const open = !topEl.classList.contains('filters-open'); topEl.classList.toggle('filters-open', open); filterBtn.setAttribute('aria-expanded', String(open)); };
+  // After picking a category on a phone, fold the list away again.
+  $('filters').addEventListener('click', (e) => {
+    if (e.target.closest('.fchip:not(.manage)') && isPhone()) { topEl.classList.remove('filters-open'); filterBtn.setAttribute('aria-expanded', 'false'); }
+  });
 
   /* =====================================================================
      Drag and drop (mouse, pen and touch)

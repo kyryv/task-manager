@@ -515,3 +515,33 @@ html{overflow-x:hidden}
   .dlgbar{position:sticky;bottom:0;background:var(--surface2);padding:8px 0 4px;margin-top:0}
   .etitle{font-size:21px}
 }
+
+/* ---------- phone header: title switches views, categories behind a filter icon ---------- */
+.viewbtn,.viewmenu,.filterbtn,.ls{display:none}
+.viewmenu[hidden]{display:none!important}
+@media (max-width:640px){
+  .brand{position:relative}
+  .brand h1,.tabs{display:none}
+  .viewbtn{display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:2px 4px;margin-left:-2px;border-radius:9px;color:var(--ink);font:500 23px/1.1 Newsreader,Georgia,serif;cursor:pointer}
+  .viewbtn .caret{font:400 14px Inter,system-ui,sans-serif;color:var(--muted);transition:transform .15s}
+  .viewbtn[aria-expanded="true"] .caret{transform:rotate(180deg)}
+  .viewmenu{display:grid;position:absolute;top:calc(100% + 6px);left:0;z-index:140;min-width:190px;padding:6px;gap:2px;background:var(--surface2);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .viewmenu button{display:flex;align-items:center;gap:10px;background:none;border:0;border-radius:9px;padding:10px 12px;font-size:15px;color:var(--ink);text-align:left;cursor:pointer}
+  .viewmenu button.on{background:rgba(240,238,230,.14)}
+  .viewmenu button .n{margin-left:auto;font-size:12.5px;color:var(--faint)}
+  .filterbtn{display:grid}
+  .filterbtn.on{color:var(--accent-ink);background:var(--cc,var(--accent));border-color:var(--cc,var(--accent))}
+  .top .filters{display:none}
+  .top.filters-open .filters{display:flex;flex-wrap:wrap;overflow:visible}
+  /* Today header in two short lines: "Today · Fri 20 · counters · +" and "progress · ⚑ N soon" */
+  .lf{display:none}
+  .ls{display:inline}
+  .thead{gap:6px 8px;align-items:center}
+  .thead h2{font-size:21px}
+  .thead .tdate{font-size:14px}
+  .tstats{gap:4px}
+  .stat{font-size:11.5px;padding:0 7px}
+  .ib.addb.wide{order:4;margin-left:auto;padding:4px 7px}
+  .tprog{order:9;flex:1 1 55%;max-width:none}
+  .linkbtn{order:10;margin-left:auto;font-size:12.5px}
+}
