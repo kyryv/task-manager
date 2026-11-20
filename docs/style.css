@@ -141,7 +141,7 @@ select.pill option{background:var(--surface2);color:var(--ink)}
 .tprog i{display:block;height:100%;border-radius:3px;transition:width .3s;background:linear-gradient(90deg,#5fb352,#86cf7a,#b4e6a9,#86cf7a,#5fb352,#86cf7a);background-size:400% 100%;animation:tint 7s ease-in-out infinite alternate}
 .linkbtn{margin-left:auto;margin-right:4px;background:none;border:0;color:var(--due);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:2px 0}
 .linkbtn:hover{text-decoration:underline}
-.list.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px;align-content:start;margin-top:8px}
+.list.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(270px,100%),1fr));gap:8px;align-content:start;margin-top:8px}
 .list.grid li.task{margin-top:0}
 .list.grid .empty{grid-column:1/-1}
 .list.grid.drop-end::after{grid-column:1/-1;margin:0}
@@ -357,7 +357,7 @@ input[type=color]::-webkit-color-swatch{border:0;border-radius:5px}
   .today{order:-1}
   .splitter{display:none}
   .list{max-height:55vh}
-  .list.grid{grid-template-columns:1fr}
+  .list.grid{grid-template-columns:minmax(0,1fr)}
   .strip{grid-template-columns:repeat(7,minmax(0,1fr))}
   .cols{grid-template-columns:1fr}
   .preview{justify-content:flex-start;text-align:left}
@@ -579,3 +579,7 @@ html{overflow-x:hidden}
 .helpbox[open]>summary::before{transform:rotate(90deg)}
 .helpbox>summary h3{display:inline}
 .helpbox[open]{display:grid;gap:8px}
+
+/* Long text (e.g. a long main-task name in the "↳" link) must never make a card wider than its column */
+li.task{min-width:0;max-width:100%}
+.meta{min-width:0}
