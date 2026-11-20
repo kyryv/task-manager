@@ -443,3 +443,75 @@ body.bg-pixel .bgprev{image-rendering:pixelated}
    (a leftover scroll position could shift everything a few pixels off the edge). */
 html{overflow-x:hidden}
 @media (min-width:901px) and (min-height:641px){html,body{overflow:hidden}}
+
+/* ---------- subtasks are real tasks ---------- */
+/* Small link to the main task in the top-right corner of a subtask card */
+.subof{float:right;display:inline-flex;align-items:center;gap:3px;max-width:46%;margin:-1px -2px 3px 8px;padding:1px 8px;border:1px dashed color-mix(in srgb,var(--due) 55%,transparent);border-radius:99px;background:rgba(20,24,22,.55);color:var(--due);font:500 11.5px/18px Inter,system-ui,sans-serif;cursor:pointer}
+.subof:hover{border-style:solid}
+.subarrow{flex:none}
+.subname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.sub .stitle{cursor:pointer}
+.sub .stitle:hover{text-decoration:underline}
+.esubs li .pname{flex:1}
+.esubs li.done .pname{color:var(--faint);text-decoration:line-through}
+.esubwrap select{justify-self:start;max-width:100%}
+.cchip.locked{cursor:default;background:var(--cc,rgba(240,238,230,.2));border-color:var(--cc,rgba(240,238,230,.2));color:#1f1e1d}
+.cchip.locked .cdot{background:#1f1e1d}
+#eCats .hint{font-size:12.5px}
+
+/* ---------- phones: adding tasks and Today first ---------- */
+@media (max-width:640px){
+  .wrap{min-height:100dvh;padding:8px 10px calc(92px + env(safe-area-inset-bottom));gap:8px}
+  /* header: logo · save dot · search · settings, then the view tabs, then categories */
+  .top{gap:8px}
+  .brand{gap:8px}
+  .logo{width:26px;height:26px}
+  h1{font-size:23px}
+  .tools{order:1;width:auto;margin-left:auto;gap:6px}
+  .tabs{order:2;width:100%}
+  .tab{flex:1;padding:8px 4px}
+  .top .filters{order:3}
+  .save{font-size:0;gap:0;width:22px;justify-content:center}
+  .iconbtn{width:38px;height:38px}
+  .search{flex:none;width:38px;height:38px;padding:0;justify-content:center;cursor:pointer}
+  .search input,.search kbd{display:none}
+  .top.searching .brand{display:none}
+  .top.searching .tools{flex:1;margin-left:0}
+  .top.searching .search{flex:1;width:auto;justify-content:flex-start;padding:0 10px}
+  .top.searching .search input{display:block;flex:1;font-size:16px}
+  /* add box pinned to the bottom; its options appear above it while typing */
+  .add{position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom) + var(--kb,0px));z-index:130;display:flex;flex-direction:column;padding:6px 6px 6px 12px;border-radius:18px;background:rgba(28,32,30,.97);box-shadow:0 10px 34px rgba(0,0,0,.6)}
+  .addrow input{font-size:16px;padding:9px 0}
+  .addrow .btn{padding:9px 16px}
+  .addopts{display:none;order:-1;margin:2px 0 8px}
+  .add.open .addopts{display:flex}
+  .addopts .preview{flex-basis:100%;justify-content:flex-start;text-align:left;min-width:0}
+  .addopts .preview > span:not(.tok):not(.ask):not(.note){display:none}
+  .toast{left:10px;right:10px;max-width:none;bottom:calc(76px + env(safe-area-inset-bottom) + var(--kb,0px))}
+  .dock{bottom:calc(76px + env(safe-area-inset-bottom))}
+  /* lists grow with the page instead of scrolling inside small boxes */
+  .list{max-height:none;overflow:visible}
+  .panel{padding:10px 8px 8px 10px}
+  .phead .sub{display:none}
+  .thead{gap:6px 10px}
+  .thead h2{font-size:25px}
+  .thead .tdate{font-size:15px}
+  .tprog{flex-basis:100%;max-width:none;order:9}
+  .linkbtn{margin-left:0}
+  /* tap a card to open it (date, delete etc. are in its window) */
+  .acts{display:none!important}
+  li.task{padding:10px 8px 10px 10px}
+  .title{-webkit-line-clamp:4}
+  /* Dates: one week per row */
+  .strip .day:nth-child(n+8){display:none}
+  .striprow{grid-template-columns:30px minmax(0,1fr) 30px;gap:5px}
+  .day{padding:5px 2px 6px}
+  .day .dn{font-size:19px}
+  .day .wd{font-size:9.5px;letter-spacing:0}
+  .day::before{font-size:17px;bottom:13px}
+  /* task window and settings use the whole screen */
+  dialog{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;border:0;border-radius:0}
+  #editForm,.setwrap{padding:14px 14px calc(16px + env(safe-area-inset-bottom))}
+  .dlgbar{position:sticky;bottom:0;background:var(--surface2);padding:8px 0 4px;margin-top:0}
+  .etitle{font-size:21px}
+}

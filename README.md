@@ -123,6 +123,18 @@ The app owner can still see stored data in the Firebase console. The sign-in scr
 
 ---
 
+## Subtasks
+- Open a task and type in **Subtasks** (Enter to add; you can write dates too, e.g. *Draft chapter 1 due fri*; paste a list to add many),
+  or pick **Add an existing task as a subtask…**. A task can also be made a subtask with **Subtask of** in its own window.
+- Subtasks are full tasks: they can have a day, a deadline, a repeat, notes and their own subtasks, and they show up on the Board and in Dates.
+- Their category always follows the main task.
+- A subtask card shows **↳ main task** in its top-right corner; tap it to open the main task.
+  The main task shows its subtasks as a checklist with progress; ticking one completes that subtask.
+
+## On a phone
+The add box sits at the bottom of the screen (its options appear while you type), Today comes first on the Board,
+the Dates strip shows one week, and tapping a card opens it.
+
 ## Moving tasks in (and backups)
 - **Settings (⚙) → Import backup…** or drop a `.json` file anywhere on the page.
   Accepts files made with **Export (.json)**, the PC version's export, and the old *Task Manager.html* “Download backup”

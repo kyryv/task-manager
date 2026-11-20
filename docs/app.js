@@ -255,7 +255,8 @@
       // Repeating: keep a completed copy for the history, move the task itself to its next date.
       const copy = { ...clone(t), id: uid(), repeat: '', status: 'done', closedAt: Date.now(), updated: Date.now() };
       const next = advance(t);
-      commit([id, copy.id], () => { tasks.push(copy); Object.assign(t, next); },
+      const doneKids = partsOf(id).filter((k) => k.status === 'done'); // a repeating task's subtasks start over too
+      commit([id, copy.id, ...doneKids.map((k) => k.id)], () => { tasks.push(copy); Object.assign(t, next); doneKids.forEach((k) => { k.status = 'active'; k.closedAt = 0; }); },
         'Done. Next time: ' + dLow(next.date || next.due) + ' (' + repeatLabel(t.repeat).toLowerCase() + ')');
     };
     if (li && !matchMedia('(prefers-reduced-motion: reduce)').matches) { li.classList.add('completing'); setTimeout(go, 260); } else go();
@@ -714,6 +715,33 @@
     addIn.focus();
   }
 
+  /* ---------- phones: bottom add bar + search icon ---------- */
+  const addForm = $('addForm');
+  const isPhone = () => matchMedia('(max-width:640px)').matches;
+  // The add bar shows its options (category, dates, repeat) only while you are adding a task.
+  addForm.addEventListener('focusin', () => addForm.classList.add('open'));
+  addForm.addEventListener('focusout', () => setTimeout(() => {
+    if (addForm.contains(document.activeElement) || !$('datePop').hidden || addIn.value.trim() || pasted) return;
+    addForm.classList.remove('open');
+  }, 150));
+  // Keep the bottom add bar above the on-screen keyboard (iPhone; Android resizes the page itself).
+  if (window.visualViewport) {
+    const vv = window.visualViewport;
+    const lift = () => document.documentElement.style.setProperty('--kb', Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop)) + 'px');
+    vv.addEventListener('resize', lift); vv.addEventListener('scroll', lift);
+  }
+  // Short placeholder on a phone (the full example does not fit).
+  const fullPlaceholder = addIn.placeholder;
+  const fitPlaceholder = () => { addIn.placeholder = isPhone() ? 'Add a task…' : fullPlaceholder; };
+  fitPlaceholder(); addEventListener('resize', fitPlaceholder);
+  // On a phone the search box is an icon until tapped.
+  const topBar = document.querySelector('.top');
+  document.querySelector('.search').addEventListener('click', () => {
+    if (!isPhone() || topBar.classList.contains('searching')) return;
+    topBar.classList.add('searching'); $('search').focus();
+  });
+  $('search').addEventListener('blur', () => { if (!$('search').value.trim()) topBar.classList.remove('searching'); });
+
   /* =====================================================================
      Date popover (reschedule, add-bar dates)
      ===================================================================== */
@@ -771,13 +799,40 @@
     if (prefs.filter && t.cat !== prefs.filter) return false;
     if (!search) return true;
     const s = search.toLowerCase();
-    return t.title.toLowerCase().includes(s) || t.desc.toLowerCase().includes(s) || t.subs.some((x) => x.title.toLowerCase().includes(s)) ||
+    return t.title.toLowerCase().includes(s) || t.desc.toLowerCase().includes(s) ||
       ((catOf(t.cat) || {}).name || '').toLowerCase().includes(s);
   }
   const byOrder = (a, b) => a.order - b.order;
 
   /* ---------- goal deadlines ("get 20 clients") and big deadlines (with parts) ---------- */
-  const partsOf = (id) => tasks.filter((x) => x.parent === id && x.status !== 'deleted' && x.id !== id);
+  // A task's subtasks: tasks whose `parent` is that task (big-deadline parts are the same thing).
+  const partsOf = (id) => tasks.filter((x) => x.parent === id && x.status !== 'deleted' && x.id !== id).sort(byOrder);
+  // The task and every subtask below it (to avoid making a task a subtask of its own subtask).
+  function familyOf(id, seen = new Set()) { if (seen.has(id)) return seen; seen.add(id); partsOf(id).forEach((k) => familyOf(k.id, seen)); return seen; }
+  // Subtasks always carry the category of their main task.
+  function syncChildCats(t, changed = []) {
+    partsOf(t.id).forEach((k) => { if (k.cat !== t.cat) { k.cat = t.cat; k.updated = Date.now(); changed.push(k.id); } syncChildCats(k, changed); });
+    return changed;
+  }
+  // Older data kept subtasks as a checklist inside the task (t.subs). Turn each into a real task linked to it.
+  // The new id is derived from the old one, so this is safe to run on several devices at once.
+  function liftSubs() {
+    const changed = [];
+    tasks.slice().forEach((t) => {
+      if (!t.subs || !t.subs.length) return;
+      t.subs.forEach((s, i) => {
+        const id = (t.id + '_' + s.id).replace(/\//g, '-').slice(0, 180);
+        if (!find(id)) {
+          tasks.push(norm({ id, title: s.title, cat: t.cat, parent: t.id, status: s.done ? 'done' : 'active',
+            closedAt: s.done ? Date.now() : 0, created: t.created, order: t.order + (i + 1) / 1000 }));
+          changed.push(id);
+        }
+      });
+      t.subs = []; t.updated = Date.now(); changed.push(t.id);
+    });
+    if (changed.length) touch(changed);
+    return changed.length;
+  }
   function progressOf(t) {
     if (t.kind === 'count') {
       const goal = Math.max(1, t.goal || 1);
@@ -787,7 +842,7 @@
       const parts = partsOf(t.id);
       const done = parts.filter((x) => x.status === 'done').length + t.subs.filter((x) => x.done).length;
       const total = parts.length + t.subs.length;
-      return { done, total, label: total ? done + ' / ' + total + ' done' : 'No parts yet', title: done + ' of ' + total + ' parts and subtasks done' };
+      return { done, total, label: total ? done + ' / ' + total + ' done' : 'No subtasks yet', title: done + ' of ' + total + ' subtasks done' };
     }
     return null;
   }
@@ -838,7 +893,18 @@
     chk.onclick = () => complete(t.id, li);
 
     const body = el('div', 'body');
-    body.onclick = (e) => { if (!e.target.closest('.subs, .more, .goal, .chip.part')) openEdit(t.id); };
+    body.onclick = (e) => { if (!e.target.closest('.subs, .more, .goal, .subof')) openEdit(t.id); };
+    // Subtask: a small link to its main task in the top-right corner.
+    const par = t.parent && find(t.parent);
+    if (par && par.status !== 'deleted') {
+      li.classList.add('is-sub');
+      const ch = el('button', 'subof'); ch.type = 'button';
+      ch.append(el('span', 'subarrow', '↳'), el('span', 'subname', par.title));
+      ch.title = 'Subtask of “' + par.title + '”. Click to open it.';
+      ch.setAttribute('aria-label', 'Open main task: ' + par.title);
+      ch.onclick = (e) => { e.stopPropagation(); openEdit(par.id); };
+      body.appendChild(ch);
+    }
     body.appendChild(el('div', 'title', t.title));
 
     const meta = el('div', 'meta');
@@ -863,27 +929,20 @@
       ch.title = 'Repeats. Completing it moves it to the next date and keeps a copy in Completed.';
       meta.appendChild(ch);
     }
-    const par = t.parent && find(t.parent);
-    if (par && par.status !== 'deleted') {
-      const ch = el('button', 'chip part'); ch.type = 'button';
-      ch.append(ic('flag'), document.createTextNode(short(par.title)));
-      ch.title = 'Part of “' + par.title + '”. Click to open it.';
-      ch.onclick = (e) => { e.stopPropagation(); openEdit(par.id); };
-      meta.appendChild(ch);
-    }
-    if (t.subs.length && t.kind !== 'big') {
-      const n = t.subs.filter((s) => s.done).length;
+    const kids = partsOf(t.id);
+    if (kids.length && t.kind !== 'big') {
+      const n = kids.filter((s) => s.status === 'done').length;
       const ch = el('span', 'chip prog');
-      const bar = el('i'); const fill = el('b'); fill.style.width = (100 * n / t.subs.length) + '%'; bar.appendChild(fill);
-      ch.append(bar, document.createTextNode(n + '/' + t.subs.length));
-      ch.title = n + ' of ' + t.subs.length + ' subtasks done';
+      const bar = el('i'); const fill = el('b'); fill.style.width = (100 * n / kids.length) + '%'; bar.appendChild(fill);
+      ch.append(bar, document.createTextNode(n + '/' + kids.length));
+      ch.title = n + ' of ' + kids.length + ' subtasks done';
       meta.appendChild(ch);
     }
     if (meta.children.length) body.appendChild(meta);
     const pr = progressOf(t);
     if (pr) body.appendChild(goalRow(t, pr));
     if (t.desc) body.appendChild(el('p', 'desc', t.desc));
-    if (t.subs.length) body.appendChild(subList(t));
+    if (kids.length) body.appendChild(subList(t, kids));
 
     const acts = el('div', 'acts');
     const res = el('button', 'ib'); res.type = 'button'; res.innerHTML = ICON.cal; res.title = 'Date or deadline';
@@ -900,31 +959,33 @@
     return li;
   }
 
-  function subList(t) {
+  // Checklist of a task's subtasks (which are tasks themselves). Ticking one completes that subtask.
+  function subList(t, kids) {
     const ul = el('ul', 'subs');
-    ul.dataset.zone = 'subs:' + t.id;
-    ul.dataset.items = 'li.sub';
     const LIMIT = 4;
-    const showAll = expanded.has(t.id) || t.subs.length <= LIMIT + 1;
-    const visible = showAll ? t.subs : t.subs.slice(0, LIMIT);
+    const showAll = expanded.has(t.id) || kids.length <= LIMIT + 1;
+    const visible = showAll ? kids : kids.slice(0, LIMIT);
     visible.forEach((s) => {
-      const li = el('li', 'sub' + (s.done ? ' done' : ''));
-      li.dataset.sid = s.id; li.dataset.drag = 'sub'; li.dataset.task = t.id;
-      const cb = el('input'); cb.type = 'checkbox'; cb.checked = s.done;
+      const done = s.status === 'done';
+      const li = el('li', 'sub' + (done ? ' done' : ''));
+      li.dataset.sid = s.id;
+      const cb = el('input'); cb.type = 'checkbox'; cb.checked = done;
       cb.setAttribute('aria-label', 'Subtask done: ' + s.title);
       cb.onchange = () => {
-        commit([t.id], () => { s.done = cb.checked; }, null);
-        const all = t.subs.length > 1 && t.subs.every((x) => x.done);
-        if (all) toast('All subtasks done. Complete the task too?', null), offerComplete(t.id);
+        if (cb.checked) confetti(s.due ? 1 : 0.6);
+        commit([s.id], () => { s.status = cb.checked ? 'done' : 'active'; s.closedAt = cb.checked ? Date.now() : 0; }, cb.checked ? 'Completed “' + short(s.title) + '”' : null);
+        const all = kids.length > 1 && kids.every((x) => x.status === 'done');
+        if (all && t.status === 'active') { toast('All subtasks done. Complete the task too?', null); offerComplete(t.id); }
       };
-      li.append(cb, el('span', 'stitle', s.title));
+      const name = el('span', 'stitle', s.title);
+      name.title = 'Open this subtask';
+      name.onclick = () => openEdit(s.id);
+      li.append(cb, name);
       ul.appendChild(li);
     });
     ul.onclick = (e) => e.stopPropagation();
-    const frag = document.createDocumentFragment();
-    frag.appendChild(ul);
-    if (t.subs.length > LIMIT + 1) {
-      const more = el('button', 'more', showAll ? 'Show fewer' : `+ ${t.subs.length - LIMIT} more subtasks`);
+    if (kids.length > LIMIT + 1) {
+      const more = el('button', 'more', showAll ? 'Show fewer' : `+ ${kids.length - LIMIT} more subtasks`);
       more.type = 'button';
       more.onclick = (e) => { e.stopPropagation(); if (showAll) expanded.delete(t.id); else expanded.add(t.id); render(); };
       const wrap = el('div'); wrap.append(ul, more);
@@ -1264,7 +1325,7 @@
     const meta = el('div', 'meta');
     if (c) { const ch = el('span', 'chip cat', c.name); ch.style.setProperty('--cc', c.color); meta.appendChild(ch); }
     meta.appendChild(el('span', 'chip', (del ? 'Deleted ' : 'Completed ') + new Date(t.closedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })));
-    if (t.subs.length) meta.appendChild(el('span', 'chip', t.subs.filter((s) => s.done).length + '/' + t.subs.length + ' subtasks'));
+    const kids = partsOf(t.id); if (kids.length) meta.appendChild(el('span', 'chip', kids.filter((s) => s.status === 'done').length + '/' + kids.length + ' subtasks'));
     body.appendChild(meta);
     const r = el('button', 'mini', 'Restore'); r.type = 'button';
     r.onclick = () => commit([t.id], () => { t.status = 'active'; t.closedAt = 0; }, 'Restored “' + short(t.title) + '”');
@@ -1457,14 +1518,11 @@
     const [type, arg] = ci < 0 ? [z, ''] : [z.slice(0, ci), z.slice(ci + 1)];
 
     if (d.kind === 'sub' || d.kind === 'dsub') {
-      const t = find(d.kind === 'sub' ? d.task : edit.id); if (!t) return;
-      const ids = listItems(d.list).map((n) => n.dataset.sid).filter((id) => id !== d.sid);
-      const i = d.before ? ids.indexOf(d.before.dataset.sid) : ids.length;
-      ids.splice(i < 0 ? ids.length : i, 0, d.sid);
-      const map = Object.fromEntries(t.subs.map((s) => [s.id, s]));
-      const hidden = t.subs.filter((s) => !ids.includes(s.id) && s.id !== d.sid);
-      commit([t.id], () => { t.subs = [...ids.map((id) => map[id]).filter(Boolean), ...hidden]; }, null);
-      if (d.kind === 'dsub') { drawSubs(); $('eRevert').hidden = false; }
+      // Reorder subtasks (in the task window): give the moved one an order value between its new neighbours.
+      const s = find(d.sid); if (!s) return;
+      const ord = orderAt(d.list, d.before, (n) => (find(n.dataset.sid) || {}).order);
+      commit([s.id], () => { s.order = ord; }, null);
+      drawSubs();
       return;
     }
 
@@ -1539,13 +1597,23 @@
   function drawCats() {
     const box = $('eCats'); box.textContent = '';
     const t = editTask(); if (!t) return;
+    // A subtask takes its category from its main task.
+    const main = t.parent && find(t.parent);
+    if (main && main.status !== 'deleted') {
+      const c = catOf(t.cat);
+      const chip = el('span', 'cchip locked'); chip.setAttribute('aria-checked', 'true');
+      if (c) chip.style.setProperty('--cc', c.color);
+      chip.append(el('span', 'cdot'), document.createTextNode(c ? c.name : 'None'));
+      box.append(chip, el('span', 'hint', 'Same as its main task'));
+      return;
+    }
     const mk = (id, name, color) => {
       const b = el('button', 'cchip'); b.type = 'button';
       b.setAttribute('role', 'radio');
       b.setAttribute('aria-checked', String(t.cat === id));
       if (color) b.style.setProperty('--cc', color);
       b.append(el('span', 'cdot'), document.createTextNode(name));
-      b.onclick = () => { t.cat = id; drawCats(); editChanged(); };
+      b.onclick = () => { t.cat = id; touch(syncChildCats(t)); drawCats(); editChanged(); };
       return b;
     };
     box.appendChild(mk('', 'None'));
@@ -1556,7 +1624,7 @@
       nb.textContent = '';
       const inp = el('input'); inp.placeholder = 'Name, then Enter'; inp.maxLength = 40;
       nb.appendChild(inp); inp.focus();
-      const done = (ok) => { const v = inp.value.trim(); if (ok && v) { t.cat = ensureCat(v); fillCatSelect(); editChanged(); } drawCats(); };
+      const done = (ok) => { const v = inp.value.trim(); if (ok && v) { t.cat = ensureCat(v); touch(syncChildCats(t)); fillCatSelect(); editChanged(); } drawCats(); };
       inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); done(true); } if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); } };
       inp.onblur = () => done(true);
     };
@@ -1663,7 +1731,6 @@
       b.onclick = () => {
         t.kind = k;
         if (k === 'count' && !t.goal) t.goal = 10;
-        if (k === 'big') t.parent = '';
         drawKind(); editChanged();
       };
       seg.appendChild(b);
@@ -1693,95 +1760,73 @@
       const pr = progressOf(t);
       const p = el('div', 'goal'); p.append(bar(pr), el('span', 'glabel', pr.label + (pr.total ? ' · ' + Math.round(100 * pr.done / pr.total) + '%' : '')));
       box.appendChild(p);
-      box.appendChild(el('p', 'hint', 'Progress counts its parts below plus its own subtasks.'));
-      const ul = el('ul', 'parts');
-      partsOf(t.id).sort((a, b) => (a.status === 'done') - (b.status === 'done') || (firstDay(a) || '9').localeCompare(firstDay(b) || '9')).forEach((x) => {
-        const li = el('li', x.status === 'done' ? 'done' : '');
-        const cb = el('input'); cb.type = 'checkbox'; cb.checked = x.status === 'done';
-        cb.setAttribute('aria-label', 'Done: ' + x.title);
-        cb.onchange = () => {
-          x.status = cb.checked ? 'done' : 'active'; x.closedAt = cb.checked ? Date.now() : 0; x.updated = Date.now();
-          if (cb.checked) confetti(x.due ? 1.2 : 0.8);
-          touch([x.id]); drawKind(); render();
-        };
-        const name = el('button', 'pname', x.title); name.type = 'button'; name.title = 'Open this part';
-        name.onclick = () => { closeEdit(); openEdit(x.id); };
-        li.append(cb, name);
-        const d = x.due || x.date;
-        if (d) li.appendChild(el('span', 'chip ' + (x.due ? (diff(x.due) < 0 && x.status !== 'done' ? 'late' : 'dl') : 'on'), (x.due ? 'Due ' : '') + dLabel(d)));
-        const un = el('button', 'ib del'); un.type = 'button'; un.innerHTML = ICON.x; un.title = 'Unlink (the task itself stays)';
-        un.onclick = () => { x.parent = ''; x.updated = Date.now(); touch([x.id]); drawKind(); render(); };
-        li.appendChild(un);
-        ul.appendChild(li);
-      });
-      box.appendChild(ul);
-      const addRow = el('div', 'partadd');
-      const inp = el('input'); inp.type = 'text'; inp.maxLength = 2000;
-      inp.placeholder = 'Add a part and press Enter, e.g. “Draft chapter 1 due fri”';
-      inp.setAttribute('aria-label', 'Add a part');
-      inp.onkeydown = (e) => {
-        if (e.key !== 'Enter') return;
-        e.preventDefault();
-        const f = withRepeatDate(fromText(inp.value, { cat: t.cat }));
-        if (!f) return;
-        const child = newTask({ ...f, parent: t.id });
-        touch([child.id]); drawKind(); render();
-        $('eKindBox').querySelector('.partadd input').focus();
-      };
-      const link = el('select', 'pill'); link.setAttribute('aria-label', 'Link an existing task');
-      link.appendChild(new Option('Link an existing task…', ''));
-      tasks.filter((x) => isActive(x) && x.id !== t.id && x.kind !== 'big' && x.parent !== t.id)
-        .sort((a, b) => a.title.localeCompare(b.title))
-        .forEach((x) => link.appendChild(new Option(short(x.title) + (x.parent ? ' (moves from another)' : ''), x.id)));
-      link.onchange = () => {
-        const x = find(link.value); if (!x) return;
-        x.parent = t.id; x.updated = Date.now(); touch([x.id]); drawKind(); render();
-      };
-      addRow.append(inp, link);
-      box.appendChild(addRow);
+      box.appendChild(el('p', 'hint', 'Progress counts its subtasks (listed under Subtasks below).'));
     }
 
-    // "Part of" for ordinary tasks, when there is a big deadline to belong to.
-    const bigs = tasks.filter((x) => x.kind === 'big' && x.status === 'active' && x.id !== t.id);
-    const row = $('ePartRow');
-    row.hidden = t.kind === 'big' || (!bigs.length && !t.parent);
+    // "Subtask of": make this task a subtask of another one (its category then follows that task).
+    const fam = familyOf(t.id);
+    const mains = tasks.filter((x) => x.status === 'active' && !fam.has(x.id)).sort((a, b) => a.title.localeCompare(b.title));
     const sel = $('eParent'); sel.textContent = '';
-    sel.appendChild(new Option('— not part of a big deadline —', ''));
-    bigs.forEach((x) => sel.appendChild(new Option(short(x.title), x.id)));
-    if (t.parent && !bigs.some((x) => x.id === t.parent)) { const p = find(t.parent); if (p) sel.appendChild(new Option(short(p.title) + ' (closed)', p.id)); }
+    sel.appendChild(new Option('— not a subtask —', ''));
+    mains.forEach((x) => sel.appendChild(new Option(short(x.title), x.id)));
+    if (t.parent && !mains.some((x) => x.id === t.parent)) { const p = find(t.parent); if (p) sel.appendChild(new Option(short(p.title) + ' (closed)', p.id)); }
     sel.value = t.parent || '';
-    sel.onchange = () => { t.parent = sel.value; editChanged(); };
+    sel.onchange = () => {
+      t.parent = sel.value;
+      const p = find(t.parent);
+      if (p) { t.cat = p.cat; touch(syncChildCats(t)); }
+      drawCats(); editChanged();
+    };
   }
 
+  // Subtasks of the open task: real tasks linked to it. Click one to open it; drag the handle to reorder.
   function drawSubs() {
     const t = editTask(); if (!t) return;
     eSubs.textContent = '';
-    const n = t.subs.filter((s) => s.done).length;
-    $('eSubCount').textContent = t.subs.length ? `(${n}/${t.subs.length})` : '';
-    t.subs.forEach((s) => {
-      const li = el('li' + '', s.done ? 'done' : '');
+    const kids = partsOf(t.id);
+    const n = kids.filter((s) => s.status === 'done').length;
+    $('eSubCount').textContent = kids.length ? `(${n}/${kids.length})` : '';
+    kids.forEach((s) => {
+      const done = s.status === 'done';
+      const li = el('li', done ? 'done' : '');
       li.dataset.sid = s.id; li.dataset.drag = 'dsub';
       const h = el('span', 'handle'); h.innerHTML = ICON.grip; h.title = 'Drag to reorder';
-      const cb = el('input'); cb.type = 'checkbox'; cb.checked = s.done; cb.setAttribute('aria-label', 'Done');
-      cb.onchange = () => { s.done = cb.checked; li.classList.toggle('done', s.done); editChanged(); drawSubCount(); };
-      const ti = el('input'); ti.type = 'text'; ti.value = s.title; ti.maxLength = 300; ti.setAttribute('aria-label', 'Subtask');
-      ti.oninput = () => { if (ti.value.trim()) { s.title = ti.value; editChanged(500); } };
-      ti.onkeydown = (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); eSubNew.focus(); }
-        if (e.key === 'Backspace' && !ti.value) { e.preventDefault(); delSub(s.id); }
+      const cb = el('input'); cb.type = 'checkbox'; cb.checked = done; cb.setAttribute('aria-label', 'Done: ' + s.title);
+      cb.onchange = () => {
+        if (cb.checked) confetti(s.due ? 1 : 0.6);
+        s.status = cb.checked ? 'done' : 'active'; s.closedAt = cb.checked ? Date.now() : 0; s.updated = Date.now();
+        touch([s.id]); drawSubs(); render();
       };
-      const x = el('button', 'ib del'); x.type = 'button'; x.innerHTML = ICON.x; x.setAttribute('aria-label', 'Remove subtask');
-      x.onclick = () => delSub(s.id);
-      li.append(h, cb, ti, x);
+      const name = el('button', 'pname', s.title); name.type = 'button'; name.title = 'Open this subtask';
+      name.onclick = () => { closeEdit(); openEdit(s.id); };
+      li.append(h, cb, name);
+      const d = s.due || s.date;
+      if (d) li.appendChild(el('span', 'chip ' + (s.due ? (diff(s.due) < 0 && !done ? 'late' : 'dl') : 'on'), (s.due ? 'Due ' : '') + dLabel(d)));
+      const x = el('button', 'ib del'); x.type = 'button'; x.innerHTML = ICON.trash; x.title = 'Delete this subtask (you can undo)';
+      x.setAttribute('aria-label', 'Delete subtask: ' + s.title);
+      x.onclick = () => { remove(s.id); drawSubs(); };
+      li.appendChild(x);
       eSubs.appendChild(li);
     });
+    // Make an existing task a subtask of this one.
+    const link = $('eSubLink'); link.textContent = '';
+    link.appendChild(new Option('Add an existing task as a subtask…', ''));
+    const fam = familyOf(t.id);
+    tasks.filter((x) => isActive(x) && !fam.has(x.id) && x.id !== t.parent).sort((a, b) => a.title.localeCompare(b.title))
+      .forEach((x) => link.appendChild(new Option(short(x.title), x.id)));
+    link.onchange = () => {
+      const x = find(link.value); if (!x) return;
+      x.parent = t.id; x.cat = t.cat; x.updated = Date.now();
+      touch([x.id, ...syncChildCats(x)]); drawSubs(); drawKind(); render();
+    };
+    if (t.kind === 'big') drawKind();
   }
-  function drawSubCount() { const t = editTask(); const n = t.subs.filter((s) => s.done).length; $('eSubCount').textContent = t.subs.length ? `(${n}/${t.subs.length})` : ''; if (t.kind === 'big') drawKind(); }
-  function delSub(sid) { const t = editTask(); t.subs = t.subs.filter((s) => s.id !== sid); drawSubs(); drawKind(); editChanged(); }
   function addSubs(lines) {
-    const t = editTask();
-    lines.forEach((l) => t.subs.push({ id: uid(), title: l.slice(0, 300), done: false }));
-    drawSubs(); drawKind(); editChanged();
+    const t = editTask(); if (!t) return;
+    const ids = [];
+    [...lines].reverse().forEach((l) => { const f = withRepeatDate(fromText(l, { cat: t.cat })); if (f) ids.unshift(newTask({ ...f, cat: t.cat, parent: t.id }).id); });
+    if (!ids.length) return;
+    touch(ids); drawSubs(); drawKind(); render();
   }
   eSubNew.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); const v = eSubNew.value.trim(); if (v) { addSubs([v]); eSubNew.value = ''; } }
@@ -1816,7 +1861,7 @@
     clearTimeout(edit.timer);
     const t = editTask();
     const pend = eSubNew.value.trim();
-    if (t && pend) t.subs.push({ id: uid(), title: pend.slice(0, 300), done: false });
+    if (t && pend) addSubs([pend]);
     if (t && JSON.stringify(t) !== JSON.stringify(edit.snap)) { t.updated = Date.now(); touch([t.id]); }
     edit.id = null; edit.snap = null;
     if (dlg.open) dlg.close();
@@ -1952,7 +1997,7 @@
       }
       tasks.push(t); have.add(t.id); ids.push(t.id);
     });
-    touch(ids); fillCatSelect(); render();
+    touch(ids); liftSubs(); fillCatSelect(); render();
     if (setDlg.open) drawCatList();
     if (ids.length) { prefs.welcomed = true; savePrefs(); }
     const report = '<b>Import report: ' + escapeHtml(file.name) + '</b><br>' + list.length + ' tasks in the file · ' + ids.length + ' added · ' +
@@ -2064,7 +2109,8 @@
     store.listen((changes, info) => {
       if (!changes) { setSave('err', info.error && (info.error.code || info.error.message)); return; }
       const changed = onRemote(changes);
-      if (changed || first) renderSoon();
+      const lifted = !first || !info.fromCache ? liftSubs() : 0; // old checklist subtasks become real tasks
+      if (changed || lifted || first) renderSoon();
       if (first && !info.fromCache) {
         first = false;
         if (!pendingSave()) setSave(navigator.onLine ? 'ok' : 'local');
