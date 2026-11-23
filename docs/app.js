@@ -723,16 +723,24 @@
   let tallest = innerHeight;
   const keyboardGone = () => {
     const h = window.visualViewport ? visualViewport.height : innerHeight;
-    if (h > tallest - 80 && document.activeElement === addIn && isPhone() && kbWasOpen) { addIn.blur(); addForm.classList.remove('open'); }
+    if (h > tallest - 80 && document.activeElement === addIn && isPhone() && kbWasOpen && Date.now() - tapInAdd > 900) { addIn.blur(); addForm.classList.remove('open'); }
     kbWasOpen = h < tallest - 150;
     tallest = Math.max(tallest, h);
   };
   let kbWasOpen = false;
   addEventListener('resize', keyboardGone);
   if (window.visualViewport) visualViewport.addEventListener('resize', keyboardGone);
-  addForm.addEventListener('focusout', () => setTimeout(() => {
-    if (!addForm.contains(document.activeElement) && $('datePop').hidden && !pasted) addForm.classList.remove('open');
-  }, 160));
+  // A tap on the add box's own buttons (Date, Category, Repeat) takes focus away from the text box for a moment
+  // on phones. That must not count as leaving, or the options fold away before the tap lands.
+  let tapInAdd = 0;
+  addForm.addEventListener('pointerdown', (e) => {
+    tapInAdd = Date.now();
+    if (e.target.closest('button') && e.pointerType !== 'mouse') addForm.classList.add('open');
+  });
+  addForm.addEventListener('mousedown', (e) => { if (e.target.closest('button')) e.preventDefault(); }); // keep focus in the text box
+  const addStillInUse = () => addForm.contains(document.activeElement) || !$('datePop').hidden || pasted || Date.now() - tapInAdd < 900;
+  function foldAddIfIdle() { if (!addStillInUse()) addForm.classList.remove('open'); }
+  addForm.addEventListener('focusout', () => setTimeout(foldAddIfIdle, 160));
   // Keep the bottom add bar above the on-screen keyboard (iPhone; Android resizes the page itself).
   if (window.visualViewport) {
     const vv = window.visualViewport;
@@ -780,7 +788,7 @@
       s.textContent = dayName(d);
     });
   }
-  function closePop() { pop.hidden = true; popCtx = null; }
+  function closePop() { pop.hidden = true; popCtx = null; setTimeout(foldAddIfIdle, 950); }
   $('popMode').querySelectorAll('button').forEach((b) => { b.onclick = () => { popCtx.field = b.dataset.m; syncPop(); }; });
   function pickDate(v) {
     const c = popCtx; closePop();
