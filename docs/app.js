@@ -770,10 +770,15 @@
     $('popMode').hidden = !!ctx.fixed;
     syncPop();
     pop.hidden = false;
-    const r = anchor.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+    placePop();
+    pop.querySelector('.popq button').focus({ preventScroll: true });
+  }
+  // Next to its button: below it, or above it when there is no room (e.g. the add box at the bottom of a phone).
+  function placePop() {
+    if (!popCtx || pop.hidden) return;
+    const r = popCtx.anchor.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
     pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.right - w)) + 'px';
     pop.style.top = (r.bottom + h + 8 > innerHeight ? Math.max(8, r.top - h - 6) : r.bottom + 6) + 'px';
-    pop.querySelector('.popq button').focus({ preventScroll: true });
   }
   function syncPop() {
     const f = popCtx.field;
@@ -798,7 +803,17 @@
   pop.querySelectorAll('[data-d]').forEach((b) => { b.onclick = () => pickDate(b.dataset.d === 'none' ? '' : quick(b.dataset.d)); });
   $('popDate').onchange = (e) => { if (e.target.value) pickDate(e.target.value); };
   document.addEventListener('pointerdown', (e) => { if (!pop.hidden && !pop.contains(e.target) && !(popCtx && popCtx.anchor.contains(e.target))) closePop(); });
-  addEventListener('resize', closePop);
+  // On phones the keyboard opening or closing changes the window height. That must not close the picker:
+  // only a real width change (e.g. turning the phone) does; otherwise the picker just moves with its button.
+  let popWidth = innerWidth;
+  addEventListener('resize', () => {
+    if (Math.abs(innerWidth - popWidth) > 40) { popWidth = innerWidth; closePop(); return; }
+    popWidth = innerWidth;
+    placePopSoon();
+  });
+  if (window.visualViewport) visualViewport.addEventListener('resize', placePopSoon);
+  // The keyboard slides away over a moment, so place the picker again as the screen settles.
+  function placePopSoon() { requestAnimationFrame(placePop); setTimeout(placePop, 150); setTimeout(placePop, 400); }
   $('view').addEventListener('scroll', closePop, true);
 
   function setTaskDate(id, field, v) {
