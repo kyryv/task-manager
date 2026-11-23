@@ -1972,8 +1972,9 @@
     drawCatList();
     $('catNewColor').value = PALETTE.find((p) => !cats.some((c) => c.color === p)) || PALETTE[0];
     const info = $('dataInfo');
+    const appVersion = (document.querySelector('script[data-version]') || {}).dataset ? document.querySelector('script[data-version]').dataset.version : '';
     info.textContent = 'Every change syncs automatically to your account' + (store.user && store.user.email ? ' (' + store.user.email + ')' : '') +
-      ' and is available on every device where you sign in. Use Export to keep your own copy.';
+      ' and is available on every device where you sign in. Use Export to keep your own copy.' + (appVersion ? ' App version ' + appVersion + '.' : '');
     $('backupBtn').hidden = $('folderBtn').hidden = true; // PC-only features: there is no local program on the web
     setDlg.showModal();
     if (focusCats) $('catNewName').focus();

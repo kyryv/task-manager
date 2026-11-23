@@ -1,7 +1,7 @@
 // Service worker: lets the app be installed and open without a connection.
 // The app's own files are fetched fresh when online (so updates show up) and served from the cache when offline.
 // Firebase's database and sign-in traffic is never touched here; Firestore has its own offline cache.
-const CACHE = 'tasks-v3';
+const CACHE = 'tasks-v4';
 const SHELL = [
   './', 'index.html', 'style.css', 'signin.css', 'app.js', 'store.js', 'firebase-config.js',
   'icon.svg', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
