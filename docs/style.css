@@ -225,7 +225,7 @@ body.is-dragging{user-select:none;-webkit-user-select:none}
 .day.weekend .dn{color:var(--muted)}
 .day.over{background:var(--accent);color:var(--accent-ink);transform:translateY(-2px)}
 .day.over .wd,.day.over .dn{color:var(--accent-ink)}
-.cols{min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cols{min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
 .kpanel.k-on{border-top:3px solid var(--on)}
 .kpanel.k-due{border-top:3px solid var(--due)}
 .kpanel .phead h2 .ic{color:var(--on)}
@@ -359,7 +359,7 @@ input[type=color]::-webkit-color-swatch{border:0;border-radius:5px}
   .list{max-height:55vh}
   .list.grid{grid-template-columns:minmax(0,1fr)}
   .strip{grid-template-columns:repeat(7,minmax(0,1fr))}
-  .cols{grid-template-columns:1fr}
+  .cols{grid-template-columns:minmax(0,1fr)}
   .preview{justify-content:flex-start;text-align:left}
   .elbl{width:100%}
   .dock{width:calc(100vw - 20px);justify-content:space-between}
@@ -583,3 +583,8 @@ html{overflow-x:hidden}
 /* Long text (e.g. a long main-task name in the "↳" link) must never make a card wider than its column */
 li.task{min-width:0;max-width:100%}
 .meta{min-width:0}
+
+/* No view may grow wider than the screen because of one long, unbreakable piece of text */
+.dates{grid-template-columns:minmax(0,1fr)}
+#view,.panel,.list,.donewrap,.dates,.cols,.board{min-width:0}
+.subname{max-width:240px}
