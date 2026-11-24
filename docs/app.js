@@ -258,7 +258,9 @@
       const next = advance(t);
       const doneKids = partsOf(id).filter((k) => k.status === 'done'); // a repeating task's subtasks start over too
       commit([id, copy.id, ...doneKids.map((k) => k.id)], () => { tasks.push(copy); Object.assign(t, next); doneKids.forEach((k) => { k.status = 'active'; k.closedAt = 0; }); },
-        'Done. Next time: ' + dLow(next.date || next.due) + ' (' + repeatLabel(t.repeat).toLowerCase() + ')');
+        diff(next.date || next.due) < 0
+          ? 'Done. Next one: ' + dLow(next.date || next.due) + ' (' + rel(next.date || next.due) + ')'
+          : 'Done. Next time: ' + dLow(next.date || next.due) + ' (' + repeatLabel(t.repeat).toLowerCase() + ')');
     };
     if (li && !matchMedia('(prefers-reduced-motion: reduce)').matches) { li.classList.add('completing'); setTimeout(go, 260); } else go();
   }
@@ -445,11 +447,11 @@
   // First date for a new repeating task: today, or the next chosen weekday.
   function firstOcc(spec) { const p = parseSpec(spec); return p && p.u === 'w' && p.days ? nextOcc(spec, plus(-1)) : TODAY(); }
   // The next round: the date moves to the next occurrence after today, a deadline keeps its distance, subtasks reset.
+  // The next round is always one step after the current date, even if that is still in the past:
+  // a daily task 2 days overdue comes back 1 day overdue, so every missed day can be done and counted.
   function advance(t) {
-    const now = TODAY();
-    const anchor = t.date || t.due || now;
-    let next = nextOcc(t.repeat, anchor);
-    for (let i = 0; next <= now && i < 2000; i++) next = nextOcc(t.repeat, next);
+    const anchor = t.date || t.due || TODAY();
+    const next = nextOcc(t.repeat, anchor);
     const out = { subs: t.subs.map((s) => ({ ...s, done: false })) };
     if (t.kind === 'count') out.count = 0; // a new round starts from zero
     if (t.date) { out.date = next; if (t.due) out.due = addDaysTo(t.due, daysBetween(t.date, next)); }
