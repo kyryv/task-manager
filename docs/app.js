@@ -254,7 +254,7 @@
       confetti(t.due || t.kind ? 1.6 : 1); // deadlines get a bigger burst
       if (!t.repeat) { commit([id], () => { t.status = 'done'; t.closedAt = Date.now(); }, 'Completed “' + short(t.title) + '”'); return; }
       // Repeating: keep a completed copy for the history, move the task itself to its next date.
-      const copy = { ...clone(t), id: uid(), repeat: '', status: 'done', closedAt: Date.now(), updated: Date.now() };
+      const copy = { ...clone(t), id: uid(), repeat: '', parent: '', status: 'done', closedAt: Date.now(), updated: Date.now() };
       const next = advance(t);
       const doneKids = partsOf(id).filter((k) => k.status === 'done'); // a repeating task's subtasks start over too
       commit([id, copy.id, ...doneKids.map((k) => k.id)], () => { tasks.push(copy); Object.assign(t, next); doneKids.forEach((k) => { k.status = 'active'; k.closedAt = 0; }); },
@@ -1003,10 +1003,11 @@
       const cb = el('input'); cb.type = 'checkbox'; cb.checked = done;
       cb.setAttribute('aria-label', 'Subtask done: ' + s.title);
       cb.onchange = () => {
-        if (cb.checked) confetti(s.due ? 1 : 0.6);
-        commit([s.id], () => { s.status = cb.checked ? 'done' : 'active'; s.closedAt = cb.checked ? Date.now() : 0; }, cb.checked ? 'Completed “' + short(s.title) + '”' : null);
-        const all = kids.length > 1 && kids.every((x) => x.status === 'done');
-        if (all && t.status === 'active') { toast('All subtasks done. Complete the task too?', null); offerComplete(t.id); }
+        if (cb.checked) {
+          complete(s.id); // same as ticking the subtask's own card: a repeating one comes back for its next round
+          const all = kids.length > 1 && kids.every((x) => x.status === 'done');
+          if (all && t.status === 'active') { toast('All subtasks done. Complete the task too?', null); offerComplete(t.id); }
+        } else commit([s.id], () => { s.status = 'active'; s.closedAt = 0; }, null);
       };
       const name = el('span', 'stitle', s.title);
       name.title = 'Open this subtask';
@@ -1878,9 +1879,9 @@
       const h = el('span', 'handle'); h.innerHTML = ICON.grip; h.title = 'Drag to reorder';
       const cb = el('input'); cb.type = 'checkbox'; cb.checked = done; cb.setAttribute('aria-label', 'Done: ' + s.title);
       cb.onchange = () => {
-        if (cb.checked) confetti(s.due ? 1 : 0.6);
-        s.status = cb.checked ? 'done' : 'active'; s.closedAt = cb.checked ? Date.now() : 0; s.updated = Date.now();
-        touch([s.id]); drawSubs(); render();
+        if (cb.checked) complete(s.id);
+        else { s.status = 'active'; s.closedAt = 0; s.updated = Date.now(); touch([s.id]); render(); }
+        drawSubs();
       };
       // Rename right here; the pencil opens the subtask's own window (dates, notes, repeat…).
       const name = el('input'); name.type = 'text'; name.className = 'sname'; name.value = s.title; name.maxLength = 300;
